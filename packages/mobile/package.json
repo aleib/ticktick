@@ -1,0 +1,16 @@
+{
+  "name": "@ticktick/mobile",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo \"Mobile planned for v2 (React Native).\"",
+    "build": "echo \"Mobile planned for v2 (React Native).\"",
+    "typecheck": "echo \"Mobile planned for v2 (React Native).\""
+  },
+  "dependencies": {
+    "@ticktick/shared": "workspace:*"
+  }
+}
+
+

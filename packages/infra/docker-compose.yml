@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ticktick
+      POSTGRES_PASSWORD: ticktick
+      POSTGRES_DB: ticktick
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+
+  api:
+    image: node:20
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://ticktick:ticktick@db:5432/ticktick
+      PORT: 8787
+      HOST: 0.0.0.0
+    volumes:
+      - ../../:/app
+    command:
+      [
+        "bash",
+        "-lc",
+        "corepack enable && pnpm -w install && pnpm -C packages/api dev",
+      ]
+    depends_on:
+      - db
+    ports:
+      - "8787:8787"
+
+volumes:
+  db_data:

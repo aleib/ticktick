@@ -1,0 +1,243 @@
+openapi: 3.0.3
+info:
+  title: TickTick API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8787
+paths:
+  /api/health:
+    get:
+      responses:
+        "200":
+          description: ok
+  /api/tasks:
+    get:
+      responses:
+        "200":
+          description: List tasks
+  /api/tasks/{id}:
+    put:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Task" }
+      responses:
+        "200":
+          description: Upserted task
+    delete:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+  /api/sessions:
+    get:
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: List sessions
+  /api/sessions/{id}:
+    put:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Session" }
+      responses:
+        "200":
+          description: Upserted session
+    delete:
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deleted
+  /api/settings:
+    get:
+      responses:
+        "200":
+          description: Get settings
+    put:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Settings" }
+      responses:
+        "200":
+          description: Upserted settings
+  /api/timer/start:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TimerStartBody" }
+      responses:
+        "200":
+          description: Started
+  /api/timer/stop:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TimerStopBody" }
+      responses:
+        "200":
+          description: Stopped
+  /api/sync/push:
+    post:
+      parameters:
+        - in: header
+          name: X-Device-Id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncPushBody" }
+      responses:
+        "200":
+          description: Applied mutations
+  /api/sync/pull:
+    post:
+      parameters:
+        - in: header
+          name: X-Device-Id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncPullBody" }
+      responses:
+        "200":
+          description: Pulled entities
+  /api/reports/daily:
+    get:
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        - in: query
+          name: tz
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Daily totals
+  /api/reports/weekly:
+    get:
+      parameters:
+        - in: query
+          name: weekStart
+          required: true
+          schema: { type: string, pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+        - in: query
+          name: tz
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Weekly totals
+components:
+  schemas:
+    Task:
+      type: object
+      required: [id, title, description, category, recurrenceRule, targetDailyMinutes, targetWeeklyMinutes, isArchived, createdAt, updatedAt, deletedAt]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string, nullable: true }
+        category: { type: string, nullable: true }
+        recurrenceRule: { nullable: true }
+        targetDailyMinutes: { type: integer, nullable: true }
+        targetWeeklyMinutes: { type: integer, nullable: true }
+        isArchived: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    Session:
+      type: object
+      required: [id, taskId, startAt, endAt, durationSeconds, kind, source, note, createdAt, updatedAt, deletedAt]
+      properties:
+        id: { type: string, format: uuid }
+        taskId: { type: string, format: uuid }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time, nullable: true }
+        durationSeconds: { type: integer, nullable: true }
+        kind: { type: string, enum: [normal, pomodoro] }
+        source: { type: string, enum: [timer, manual] }
+        note: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        deletedAt: { type: string, format: date-time, nullable: true }
+    Settings:
+      type: object
+      required: [singletonId, timezone, weekStartsOn, idlePauseSeconds, pomodoroWorkMinutes, pomodoroShortBreakMinutes, pomodoroLongBreakMinutes, pomodoroLongBreakEvery, notificationsEnabled, createdAt, updatedAt]
+      properties:
+        singletonId: { type: boolean, enum: [true] }
+        timezone: { type: string }
+        weekStartsOn: { type: integer, enum: [1,2,3,4,5,6,7] }
+        idlePauseSeconds: { type: integer }
+        pomodoroWorkMinutes: { type: integer }
+        pomodoroShortBreakMinutes: { type: integer }
+        pomodoroLongBreakMinutes: { type: integer }
+        pomodoroLongBreakEvery: { type: integer }
+        notificationsEnabled: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    TimerStartBody:
+      type: object
+      required: [sessionId, taskId, kind, startAt]
+      properties:
+        sessionId: { type: string, format: uuid }
+        taskId: { type: string, format: uuid }
+        kind: { type: string, enum: [normal, pomodoro] }
+        startAt: { type: string, format: date-time }
+    TimerStopBody:
+      type: object
+      required: [sessionId, endAt]
+      properties:
+        sessionId: { type: string, format: uuid }
+        endAt: { type: string, format: date-time }
+    SyncPushBody:
+      type: object
+      required: [mutations]
+      properties:
+        mutations:
+          type: array
+          items: { type: object }
+    SyncPullBody:
+      type: object
+      properties:
+        sinceServerTs: { type: string, format: date-time, nullable: true }
+
+

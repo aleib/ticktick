@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+coverage/
+.vite/
+
+# TypeScript
+*.tsbuildinfo
+
+# Playwright / E2E artifacts (planned)
+playwright-report/
+test-results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+!.vscode/extensions.json
+
+# Misc
+temp/
