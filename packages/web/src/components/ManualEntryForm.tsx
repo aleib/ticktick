@@ -19,7 +19,10 @@ import {
 export type ManualEntryFormProps = {
   deviceId: string;
   tasks: Task[];
+  initialSession?: Session | null;
   onCreated?: () => void;
+  onUpdated?: () => void;
+  onCancel?: () => void;
 };
 
 function localNoonIso(dateIso: string): string {
@@ -28,23 +31,46 @@ function localNoonIso(dateIso: string): string {
   return dt.toISOString();
 }
 
+/**
+ * Extracts "YYYY-MM-DD" from a session's startAt ISO string,
+ * assuming the session was recorded in local time or we just want the date part.
+ *
+ * For a robust implementation dealing with time zones, you might want a specialized helper.
+ * Here we simply take the first 10 chars if available.
+ */
+function getIsoDatePart(isoString: string): string {
+  return isoString.split("T")[0] ?? isoString;
+}
+
 export function ManualEntryForm({
   deviceId,
   tasks,
+  initialSession,
   onCreated,
+  onUpdated,
+  onCancel,
 }: ManualEntryFormProps) {
-  const todayIso = useMemo(() => {
+  const defaultDate = useMemo(() => {
+    if (initialSession) {
+      return getIsoDatePart(initialSession.startAt);
+    }
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
     const day = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${day}`;
-  }, []);
+  }, [initialSession]);
 
-  const [taskId, setTaskId] = useState(tasks[0]?.id ?? "");
-  const [date, setDate] = useState(todayIso);
-  const [minutes, setMinutes] = useState(30);
-  const [note, setNote] = useState("");
+  const [taskId, setTaskId] = useState(initialSession?.taskId ?? tasks[0]?.id ?? "");
+  const [date, setDate] = useState(defaultDate);
+  // Default to 30 mins or calculate from session
+  const [minutes, setMinutes] = useState(
+    initialSession ? Math.floor((initialSession.durationSeconds ?? 1800) / 60) : 30
+  );
+  const [note, setNote] = useState(initialSession?.note ?? "");
+
+  // If tasks list changes or we switch to edit mode for a task not in list (archived?), handle gracefully:
+  // (Optional: ensuring taskId is valid logic can go here)
 
   async function onSubmit() {
     if (taskId === "") return;
@@ -56,16 +82,17 @@ export function ManualEntryForm({
     ).toISOString();
     const now = nowIso();
 
+    const isEdit = !!initialSession;
     const session: Session = {
-      id: crypto.randomUUID(),
+      id: initialSession?.id ?? crypto.randomUUID(),
       taskId,
       startAt,
       endAt,
       durationSeconds: Math.floor(minutes * 60),
-      kind: "normal",
+      kind: initialSession?.kind ?? "normal", // preserve kind if editing
       source: "manual",
       note: note.trim() === "" ? null : note.trim(),
-      createdAt: now,
+      createdAt: initialSession?.createdAt ?? now,
       updatedAt: now,
       deletedAt: null,
     };
@@ -81,14 +108,18 @@ export function ManualEntryForm({
       clientTs: nowIso(),
     });
 
-    setNote("");
-    onCreated?.();
+    if (isEdit) {
+      onUpdated?.();
+    } else {
+      setNote(""); // Reset note for next entry only if creating
+      onCreated?.();
+    }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manual Entry</CardTitle>
+        <CardTitle>{initialSession ? "Edit Entry" : "Manual Entry"}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-4">
@@ -138,9 +169,20 @@ export function ManualEntryForm({
             </div>
           </div>
 
-          <Button onClick={onSubmit} className="w-full md:w-auto">
-            Add Entry
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={onSubmit} className="flex-1 md:flex-none">
+              {initialSession ? "Update Entry" : "Add Entry"}
+            </Button>
+            {onCancel && (
+              <Button
+                variant="outline"
+                onClick={onCancel}
+                className="flex-1 md:flex-none"
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

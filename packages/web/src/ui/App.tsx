@@ -11,6 +11,7 @@ import { Tasks } from "../pages/Tasks.js";
 import { Reports } from "../pages/Reports.js";
 import { Settings } from "../pages/Settings.js";
 import { NotFound } from "../pages/NotFound.js";
+import { Sessions } from "../pages/Sessions.js";
 
 export function App() {
   const deviceId = useMemo(() => ensureDeviceId(), []);
@@ -46,6 +47,7 @@ export function App() {
         <AppLayout>
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/sessions" element={<Sessions />} />
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/settings" element={<Settings />} />

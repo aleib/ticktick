@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ListTodo, BarChart3, Settings, Clock } from 'lucide-react';
+import { LayoutDashboard, ListTodo, BarChart3, Settings, Clock, CalendarCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/sessions', label: 'Sessions', icon: CalendarCheck },
   { to: '/tasks', label: 'Tasks', icon: ListTodo },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', icon: Settings },
