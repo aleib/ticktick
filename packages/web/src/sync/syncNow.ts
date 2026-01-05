@@ -105,7 +105,7 @@ export async function syncNow({ deviceId, apiBaseUrl, batchSize = 250 }: SyncNow
 
     if (pullJson.settings != null) {
       const remote = settingsSchema.parse(pullJson.settings);
-      const local = await db.settings.get(true);
+      const local = await db.settings.get("singleton");
       if (shouldApplyRemoteSettings(local, remote)) {
         await db.settings.put(remote);
       }

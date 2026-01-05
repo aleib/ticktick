@@ -1,0 +1,288 @@
+import type { RunningTimerState, Session, Task } from "@ticktick/shared";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ManualEntryForm } from "../components/ManualEntryForm.js";
+import { TodayProgress } from "../components/dashboard/TodayProgress.js";
+import { TimerHero } from "../components/timer/TimerHero.js";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card.js";
+import { db } from "../db/db.js";
+import { computeDailyTotals, formatHhMm } from "../reports/localReports.js";
+import { ensureDeviceId } from "../sync/deviceId.js";
+import { TimerStore } from "../timer/timerStore.js";
+
+/** Returns today's date as YYYY-MM-DD in local timezone */
+function getTodayIso(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Returns today's ISO weekday (1=Mon ... 7=Sun) */
+function getTodayIsoWeekday(): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
+  const dayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, etc.
+  return (dayOfWeek === 0 ? 7 : dayOfWeek) as 1 | 2 | 3 | 4 | 5 | 6 | 7;
+}
+
+type UIState = "idle" | "running" | "paused" | "break";
+
+function deriveUIState(timerState: RunningTimerState | null): UIState {
+  if (!timerState) return "idle";
+  if (!timerState.isRunning) return "paused";
+  if (
+    timerState.pomodoro?.phase === "shortBreak" ||
+    timerState.pomodoro?.phase === "longBreak"
+  ) {
+    return "break";
+  }
+  return "running";
+}
+
+export function Dashboard() {
+  // --- State ---
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [timerState, setTimerState] = useState<RunningTimerState | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [progress, setProgress] = useState(0);
+
+  // Stable refs
+  const deviceId = useMemo(() => ensureDeviceId(), []);
+  const timerStore = useMemo(() => new TimerStore({ deviceId }), [deviceId]);
+
+  // --- Data fetching ---
+
+  /** Refresh all data from IndexedDB */
+  const refreshData = useCallback(async () => {
+    const [allTasks, allSessions] = await Promise.all([
+      db.tasks.toArray(),
+      db.sessions.toArray(),
+    ]);
+
+    setTasks(allTasks.filter((t) => t.deletedAt == null && !t.isArchived));
+    setSessions(allSessions.filter((s) => s.deletedAt == null));
+  }, []);
+
+  // Initial data load
+  useEffect(() => {
+    void refreshData();
+  }, [refreshData]);
+
+  // Refresh data periodically (for multi-tab sync, external changes)
+  useEffect(() => {
+    const interval = setInterval(() => void refreshData(), 5000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
+
+  // --- Timer state polling ---
+
+  useEffect(() => {
+    let mounted = true;
+
+    const refreshTimer = async () => {
+      const state = await timerStore.getState();
+      if (!mounted) return;
+
+      setTimerState(state ?? null);
+
+      // Calculate elapsed seconds from persisted state
+      if (state?.isRunning && state.lastTickPerfNow != null) {
+        const now = performance.now();
+        const elapsed = Math.floor((now - state.lastTickPerfNow) / 1000);
+        setElapsedSeconds(state.accumulatedSeconds + elapsed);
+      } else if (state) {
+        setElapsedSeconds(state.accumulatedSeconds);
+      } else {
+        setElapsedSeconds(0);
+      }
+    };
+
+    void refreshTimer();
+    const interval = setInterval(() => void refreshTimer(), 1000);
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [timerStore]);
+
+  // --- Pomodoro progress calculation ---
+
+  useEffect(() => {
+    if (!timerState?.pomodoro) {
+      setProgress(0);
+      return;
+    }
+
+    // Calculate progress based on settings
+    const updateProgress = async () => {
+      const settings = await db.settings.get("singleton");
+      const phase = timerState.pomodoro!.phase;
+
+      const totalSeconds =
+        phase === "work"
+          ? (settings?.pomodoroWorkMinutes ?? 25) * 60
+          : phase === "longBreak"
+          ? (settings?.pomodoroLongBreakMinutes ?? 15) * 60
+          : (settings?.pomodoroShortBreakMinutes ?? 5) * 60;
+
+      const remaining = timerState.pomodoro!.remainingSeconds;
+      const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
+      setProgress(Math.max(0, Math.min(100, pct)));
+    };
+
+    void updateProgress();
+  }, [timerState?.pomodoro?.phase, timerState?.pomodoro?.remainingSeconds]);
+
+  // --- Derived state ---
+
+  const uiState = useMemo(() => deriveUIState(timerState), [timerState]);
+
+  const todayIso = useMemo(() => getTodayIso(), []);
+
+  const todayTotal = useMemo(() => {
+    const daily = computeDailyTotals(sessions, todayIso);
+    return formatHhMm(daily.totalSeconds);
+  }, [sessions, todayIso]);
+
+  /** Tasks scheduled for today with their progress */
+  const todayProgress = useMemo(() => {
+    const isoWeekday = getTodayIsoWeekday();
+
+    const activeTasks = tasks.filter((task) => {
+      if (!task.targetDailyMinutes) return false;
+
+      // Check if task is scheduled for today
+      if (task.recurrenceRule) {
+        if (task.recurrenceRule.freq === "WEEKLY") {
+          const byWeekdays = task.recurrenceRule.byWeekdays;
+          if (byWeekdays && byWeekdays.length > 0) {
+            return byWeekdays.includes(isoWeekday);
+          }
+        } else if (task.recurrenceRule.freq === "DAILY") {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    const daily = computeDailyTotals(sessions, todayIso);
+
+    return activeTasks.map((task) => {
+      const loggedSeconds = daily.totalsByTaskId[task.id] ?? 0;
+      const loggedMinutes = Math.floor(loggedSeconds / 60);
+      const targetMinutes = task.targetDailyMinutes ?? 0;
+
+      return {
+        taskId: task.id,
+        task,
+        loggedMinutes,
+        targetMinutes,
+      };
+    });
+  }, [tasks, sessions, todayIso]);
+
+  const totalTodayMinutes = useMemo(() => {
+    return todayProgress.reduce((sum, p) => sum + p.loggedMinutes, 0);
+  }, [todayProgress]);
+
+  // --- Event handlers ---
+
+  const handleStart = useCallback(async () => {
+    if (!timerState?.taskId || timerState.isRunning) return;
+    await timerStore.start(timerState.taskId, timerState.kind);
+  }, [timerState?.taskId, timerState?.isRunning, timerState?.kind, timerStore]);
+
+  const handlePause = useCallback(async () => {
+    await timerStore.pause();
+  }, [timerStore]);
+
+  const handleResume = useCallback(async () => {
+    await timerStore.resume();
+  }, [timerStore]);
+
+  const handleStop = useCallback(async () => {
+    await timerStore.stop();
+    // Refresh data to show the new session
+    await refreshData();
+  }, [timerStore, refreshData]);
+
+  const handleSelectTask = useCallback(
+    async (taskId: string) => {
+      if (timerState?.isRunning) return;
+      const kind = timerState?.kind ?? "normal";
+      await timerStore.start(taskId, kind);
+    },
+    [timerState?.isRunning, timerState?.kind, timerStore]
+  );
+
+  const handleTogglePomodoro = useCallback(async () => {
+    if (timerState?.isRunning) return;
+    const newKind = timerState?.kind === "pomodoro" ? "normal" : "pomodoro";
+    if (timerState?.taskId) {
+      await timerStore.stop();
+      await timerStore.start(timerState.taskId, newKind);
+    }
+  }, [timerState?.isRunning, timerState?.kind, timerState?.taskId, timerStore]);
+
+  const handleManualEntryCreated = useCallback(() => {
+    void refreshData();
+  }, [refreshData]);
+
+  // --- Render ---
+
+  return (
+    <div className="container mx-auto p-4 md:p-8 max-w-6xl">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+        <p className="text-muted-foreground">Today: {todayTotal}</p>
+      </div>
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Timer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TimerHero
+              state={uiState}
+              elapsedSeconds={elapsedSeconds}
+              progress={progress}
+              isPomodoroMode={timerState?.kind === "pomodoro"}
+              selectedTaskId={timerState?.taskId ?? null}
+              tasks={tasks}
+              pomodoroPhase={timerState?.pomodoro?.phase}
+              pomodoroSession={(timerState?.pomodoro?.cycleCount ?? 0) + 1}
+              onSelectTask={handleSelectTask}
+              onStart={handleStart}
+              onPause={handlePause}
+              onResume={handleResume}
+              onStop={handleStop}
+              onTogglePomodoro={handleTogglePomodoro}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <ManualEntryForm
+            deviceId={deviceId}
+            tasks={tasks}
+            onCreated={handleManualEntryCreated}
+          />
+        </Card>
+
+        <div className="md:col-span-2">
+          <TodayProgress
+            progress={todayProgress}
+            totalMinutes={totalTodayMinutes}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

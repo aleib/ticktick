@@ -36,7 +36,7 @@ export type SyncStateRow = {
 export class TickTickDb extends Dexie {
   tasks!: Table<Task, string>;
   sessions!: Table<Session, string>;
-  settings!: Table<Settings, true>;
+  settings!: Table<Settings, "singleton">;
 
   runningTimer!: Table<RunningTimerState, "singleton">;
   outbox!: Table<OutboxMutationRow, string>;

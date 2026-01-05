@@ -151,7 +151,7 @@ function fromSession(session: Session): typeof sessions.$inferInsert {
 
 function toSettings(row: typeof settings.$inferSelect): Settings {
   return {
-    singletonId: true,
+    singletonId: "singleton",
     timezone: row.timezone,
     weekStartsOn: row.weekStartsOn as any,
     idlePauseSeconds: row.idlePauseSeconds,

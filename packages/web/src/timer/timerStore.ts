@@ -34,7 +34,7 @@ export class TimerStore {
       await this.pause();
     }
 
-    const settings = await db.settings.get(true);
+    const settings = await db.settings.get("singleton");
     const workSeconds = (settings?.pomodoroWorkMinutes ?? 25) * 60;
 
     const state = startTimer({

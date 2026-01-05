@@ -53,7 +53,7 @@ export type Session = {
 };
 
 export type Settings = {
-  singletonId: true;
+  singletonId: "singleton";
 
   /**
    * Timezone strategy for reporting. For MVP we default to 'local' and compute

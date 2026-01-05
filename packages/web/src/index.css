@@ -1,0 +1,167 @@
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 16% 96%;
+    --foreground: 220 20% 10%;
+
+    --card: 220 14% 92%;
+    --card-foreground: 220 20% 10%;
+
+    --popover: 220 14% 92%;
+    --popover-foreground: 220 20% 10%;
+
+    --primary: 175 60% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 88%;
+    --secondary-foreground: 220 20% 20%;
+
+    --muted: 220 14% 90%;
+    --muted-foreground: 220 10% 50%;
+
+    --accent: 175 50% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 90% 55%;
+    --warning-foreground: 38 90% 15%;
+
+    --success: 145 60% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 220 14% 85%;
+    --input: 220 14% 85%;
+    --ring: 175 60% 40%;
+
+    --radius: 0.5rem;
+
+    /* Timer-specific tokens */
+    --timer-idle: 220 10% 50%;
+    --timer-running: 175 60% 50%;
+    --timer-paused: 38 90% 55%;
+    --timer-break: 280 50% 60%;
+
+    /* Progress tokens */
+    --progress-bg: 220 14% 85%;
+    --progress-fill: 175 60% 40%;
+  }
+
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 220 10% 92%;
+
+    --card: 220 18% 12%;
+    --card-foreground: 220 10% 92%;
+
+    --popover: 220 18% 14%;
+    --popover-foreground: 220 10% 92%;
+
+    --primary: 175 55% 50%;
+    --primary-foreground: 220 20% 8%;
+
+    --secondary: 220 16% 18%;
+    --secondary-foreground: 220 10% 80%;
+
+    --muted: 220 16% 16%;
+    --muted-foreground: 220 10% 55%;
+
+    --accent: 175 50% 45%;
+    --accent-foreground: 220 20% 8%;
+
+    --destructive: 0 60% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 85% 55%;
+    --warning-foreground: 38 90% 10%;
+
+    --success: 145 55% 45%;
+    --success-foreground: 220 20% 8%;
+
+    --border: 220 16% 20%;
+    --input: 220 16% 20%;
+    --ring: 175 55% 50%;
+
+    /* Timer-specific tokens (dark) */
+    --timer-idle: 220 10% 45%;
+    --timer-running: 175 55% 55%;
+    --timer-paused: 38 85% 55%;
+    --timer-break: 280 50% 55%;
+
+    /* Progress tokens (dark) */
+    --progress-bg: 220 16% 20%;
+    --progress-fill: 175 55% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  /* Theme is controlled by ThemeProvider via class on html element */
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: "Inter", system-ui, sans-serif;
+  }
+
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+}
+
+@layer utilities {
+  /* Timer pulse animation */
+  @keyframes timer-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+
+  .animate-timer-pulse {
+    animation: timer-pulse 2s ease-in-out infinite;
+  }
+
+  /* Progress ring animation */
+  @keyframes progress-spin {
+    0% {
+      stroke-dashoffset: 283;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* Subtle fade in */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 200ms ease-out;
+  }
+
+  /* Glow effect for running state */
+  .timer-glow {
+    box-shadow: 0 0 60px -10px hsl(var(--timer-running) / 0.3);
+  }
+}
