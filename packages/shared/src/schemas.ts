@@ -142,7 +142,7 @@ export const runningTimerStateSchema: z.ZodType<RunningTimerState> = z.object({
   startedAtUtc: isoDatetimeSchema,
   accumulatedSeconds: z.number().int().nonnegative(),
   isRunning: z.boolean(),
-  lastTickPerfNow: z.number().nullable(),
+  lastTickMs: z.number().nullable(),
   pomodoro: z
     .object({
       phase: z.union([

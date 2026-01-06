@@ -76,17 +76,17 @@ export type Settings = {
 
 export type RecurrenceRule =
   | {
-      freq: "WEEKLY";
-      /**
-       * ISO weekdays (1=Mon ... 7=Sun). If omitted, defaults to the task's creation weekday.
-       */
-      byWeekdays?: Array<1 | 2 | 3 | 4 | 5 | 6 | 7>;
-      interval?: number; // every N weeks
-    }
+    freq: "WEEKLY";
+    /**
+     * ISO weekdays (1=Mon ... 7=Sun). If omitted, defaults to the task's creation weekday.
+     */
+    byWeekdays?: Array<1 | 2 | 3 | 4 | 5 | 6 | 7>;
+    interval?: number; // every N weeks
+  }
   | {
-      freq: "DAILY";
-      interval?: number; // every N days
-    };
+    freq: "DAILY";
+    interval?: number; // every N days
+  };
 
 export type MutationOp = "upsert" | "delete";
 export type EntityType = "task" | "session" | "settings";
@@ -113,15 +113,15 @@ export type RunningTimerState = {
   startedAtUtc: string; // ISO datetime
   accumulatedSeconds: number; // excludes current run slice
   isRunning: boolean;
-  lastTickPerfNow: number | null;
+  lastTickMs: number | null;
 
   pomodoro:
-    | {
-        phase: "work" | "shortBreak" | "longBreak";
-        remainingSeconds: number;
-        cycleCount: number; // completed work phases
-      }
-    | null;
+  | {
+    phase: "work" | "shortBreak" | "longBreak";
+    remainingSeconds: number;
+    cycleCount: number; // completed work phases
+  }
+  | null;
 
   updatedAt: string; // ISO datetime
 };

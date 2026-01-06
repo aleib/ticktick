@@ -111,6 +111,11 @@ export function Dashboard() {
 
   // --- Timer state polling ---
 
+  // Recover any running timer on mount (handles page reload)
+  useEffect(() => {
+    void timerStore.recover();
+  }, [timerStore]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -121,9 +126,9 @@ export function Dashboard() {
       setTimerState(state ?? null);
 
       // Calculate elapsed seconds from persisted state
-      if (state?.isRunning && state.lastTickPerfNow != null) {
-        const now = performance.now();
-        const elapsed = Math.floor((now - state.lastTickPerfNow) / 1000);
+      if (state?.isRunning && state.lastTickMs != null) {
+        const now = Date.now();
+        const elapsed = Math.floor((now - state.lastTickMs) / 1000);
         setElapsedSeconds(state.accumulatedSeconds + elapsed);
       } else if (state) {
         setElapsedSeconds(state.accumulatedSeconds);

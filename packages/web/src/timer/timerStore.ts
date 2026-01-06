@@ -24,7 +24,37 @@ export class TimerStore {
   }
 
   async getState(): Promise<RunningTimerState | undefined> {
-    return await db.runningTimer.get("singleton");
+    const state = await db.runningTimer.get("singleton");
+    if (!state) return undefined;
+
+    // Migration: handle legacy field name from older versions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = state as any;
+    if (raw.lastTickPerfNow !== undefined && state.lastTickMs === undefined) {
+      state.lastTickMs = raw.lastTickPerfNow;
+      delete raw.lastTickPerfNow;
+      await db.runningTimer.put(state);
+    }
+    return state;
+  }
+
+  /**
+   * Call on app initialization to resume any running timer.
+   * Catches up accumulated time from when the page was closed.
+   */
+  async recover(): Promise<void> {
+    const state = await this.getState();
+    if (!state?.isRunning) return;
+
+    // Catch up accumulated time since last tick
+    if (state.lastTickMs != null) {
+      const now = Date.now();
+      const next = tickTimer(state, now);
+      if (next !== state) {
+        await db.runningTimer.put(next);
+      }
+    }
+    this.ensureTicking();
   }
 
   async start(taskId: string, kind: SessionKind): Promise<RunningTimerState> {
@@ -156,7 +186,7 @@ export class TimerStore {
     const state = await this.getState();
     if (state == null || !state.isRunning) return;
 
-    const next = tickTimer(state, performance.now());
+    const next = tickTimer(state, Date.now());
     if (next === state) return;
 
     const pomodoroEnded =

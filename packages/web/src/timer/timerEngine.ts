@@ -30,18 +30,18 @@ export function startTimer(input: StartTimerInput): RunningTimerState {
     startedAtUtc: input.startAtIso,
     accumulatedSeconds: 0,
     isRunning: true,
-    lastTickPerfNow: performance.now(),
+    lastTickMs: Date.now(),
     pomodoro: input.kind === "pomodoro" ? (input.pomodoro ?? { phase: "work", remainingSeconds: 25 * 60, cycleCount: 0 }) : null,
     updatedAt: now
   };
 }
 
-export function tickTimer(state: RunningTimerState, nowPerf: number): RunningTimerState {
+export function tickTimer(state: RunningTimerState, nowMs: number): RunningTimerState {
   if (!state.isRunning) return state;
-  const last = state.lastTickPerfNow;
-  if (last == null) return { ...state, lastTickPerfNow: nowPerf, updatedAt: nowIso() };
+  const last = state.lastTickMs;
+  if (last == null) return { ...state, lastTickMs: nowMs, updatedAt: nowIso() };
 
-  const deltaSeconds = Math.max(0, Math.floor((nowPerf - last) / 1000));
+  const deltaSeconds = Math.max(0, Math.floor((nowMs - last) / 1000));
   if (deltaSeconds === 0) return state;
 
   const nextPomodoro =
@@ -56,19 +56,19 @@ export function tickTimer(state: RunningTimerState, nowPerf: number): RunningTim
     accumulatedSeconds: state.accumulatedSeconds + deltaSeconds,
     pomodoro: nextPomodoro,
     isRunning: pomodoroEnded ? false : state.isRunning,
-    lastTickPerfNow: pomodoroEnded ? null : nowPerf,
+    lastTickMs: pomodoroEnded ? null : nowMs,
     updatedAt: nowIso()
   };
 }
 
 export function pauseTimer(state: RunningTimerState): RunningTimerState {
   if (!state.isRunning) return state;
-  return { ...state, isRunning: false, lastTickPerfNow: null, updatedAt: nowIso() };
+  return { ...state, isRunning: false, lastTickMs: null, updatedAt: nowIso() };
 }
 
 export function resumeTimer(state: RunningTimerState): RunningTimerState {
   if (state.isRunning) return state;
-  return { ...state, isRunning: true, lastTickPerfNow: performance.now(), updatedAt: nowIso() };
+  return { ...state, isRunning: true, lastTickMs: Date.now(), updatedAt: nowIso() };
 }
 
 export function stopTimer(state: RunningTimerState, input: StopTimerInput): Session {
