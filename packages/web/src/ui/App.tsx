@@ -5,7 +5,7 @@ import { AppLayout } from "../components/layout/AppLayout.js";
 import { Toaster } from "../components/ui/toaster.js";
 import { TimerStore } from "../timer/timerStore.js";
 import { ensureDeviceId } from "../sync/deviceId.js";
-import { IdleWatcher } from "../idle/idleWatcher.js";
+
 import { Dashboard } from "../pages/Dashboard.js";
 import { Tasks } from "../pages/Tasks.js";
 import { Reports } from "../pages/Reports.js";
@@ -33,13 +33,7 @@ export function App() {
     };
   }, [timerStore]);
 
-  useEffect(() => {
-    const watcher = new IdleWatcher({ timerStore, idlePauseSeconds: 60 });
-    watcher.start();
-    return () => {
-      watcher.stop();
-    };
-  }, [timerStore]);
+
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="ticktick-theme">
