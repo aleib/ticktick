@@ -57,7 +57,7 @@ export function Tasks() {
 
   const activeTasks = tasks.filter(t => !t.isArchived);
   const archivedTasks = tasks.filter(t => t.isArchived);
-  
+
   const tasksByCategory = activeTasks.reduce((acc, task) => {
     const category = task.category || 'Uncategorized';
     if (!acc[category]) {
@@ -102,7 +102,7 @@ export function Tasks() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const now = nowIso();
-    
+
     const recurrenceRule: RecurrenceRule = {
       freq: 'WEEKLY',
       byWeekdays: formData.recurrenceDays as Array<1 | 2 | 3 | 4 | 5 | 6 | 7>,
@@ -243,7 +243,7 @@ export function Tasks() {
                   <Input
                     id="daily"
                     type="number"
-                    min={1}
+                    min={0}
                     value={formData.dailyTargetMinutes}
                     onChange={e => setFormData(prev => ({ ...prev, dailyTargetMinutes: parseInt(e.target.value) || 0 }))}
                     className="bg-secondary/50 border-0"
