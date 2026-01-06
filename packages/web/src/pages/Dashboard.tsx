@@ -12,6 +12,13 @@ import {
 import { db } from "../db/db.js";
 import { computeDailyTotals, formatHhMm } from "../reports/localReports.js";
 import { ensureDeviceId } from "../sync/deviceId.js";
+import { StopwatchHero } from "../components/timer/StopwatchHero.js";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs.js";
 import { TimerStore } from "../timer/timerStore.js";
 
 /** Returns today's date as YYYY-MM-DD in local timezone */
@@ -45,11 +52,34 @@ function deriveUIState(timerState: RunningTimerState | null): UIState {
 
 export function Dashboard() {
   // --- State ---
+  // --- State ---
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [timerState, setTimerState] = useState<RunningTimerState | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [progress, setProgress] = useState(0);
+
+  // Persistent Tab State
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    return localStorage.getItem("dashboard.activeTab") || "timer";
+  });
+
+  // Persistent Task Selection (shared across tabs when idle)
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(() => {
+    return localStorage.getItem("dashboard.selectedTaskId") || null;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("dashboard.activeTab", activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (selectedTaskId) {
+      localStorage.setItem("dashboard.selectedTaskId", selectedTaskId);
+    } else {
+      localStorage.removeItem("dashboard.selectedTaskId");
+    }
+  }, [selectedTaskId]);
 
   // Stable refs
   const deviceId = useMemo(() => ensureDeviceId(), []);
@@ -128,8 +158,8 @@ export function Dashboard() {
         phase === "work"
           ? (settings?.pomodoroWorkMinutes ?? 25) * 60
           : phase === "longBreak"
-          ? (settings?.pomodoroLongBreakMinutes ?? 15) * 60
-          : (settings?.pomodoroShortBreakMinutes ?? 5) * 60;
+            ? (settings?.pomodoroLongBreakMinutes ?? 15) * 60
+            : (settings?.pomodoroShortBreakMinutes ?? 5) * 60;
 
       const remaining = timerState.pomodoro!.remainingSeconds;
       const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
@@ -214,21 +244,51 @@ export function Dashboard() {
 
   const handleSelectTask = useCallback(
     async (taskId: string) => {
+      setSelectedTaskId(taskId);
+
+      // If we are in Manual mode, just selecting the task is enough.
+      // If in Timer or Stopwatch mode, we might want to auto-start or just select.
+      // Current behavior was auto-start, let's keep it for Timer/Stopwatch if user clicks a task in the list.
+      // BUT, if the timer is already running, we ignore or switch?
+      // The original code: if (timerState?.isRunning) return;
+
       if (timerState?.isRunning) return;
-      const kind = timerState?.kind ?? "normal";
+
+      if (activeTab === "manual") {
+        return; // Just select
+      }
+
+      // For timer/stopwatch, auto-start
+      const kind = activeTab === "timer" ? "pomodoro" : "normal";
       await timerStore.start(taskId, kind);
     },
-    [timerState?.isRunning, timerState?.kind, timerStore]
+    [timerState?.isRunning, activeTab, timerStore]
   );
 
   const handleTogglePomodoro = useCallback(async () => {
-    if (timerState?.isRunning) return;
-    const newKind = timerState?.kind === "pomodoro" ? "normal" : "pomodoro";
-    if (timerState?.taskId) {
-      await timerStore.stop();
-      await timerStore.start(timerState.taskId, newKind);
+    // This is now effectively handled by switching Tabs, but we might want to keep
+    // some logic if the user switches tabs while running?
+    // Actually, switching tabs strictly changes the VIEW. The underlying timer state
+    // persists. If I am running a Pomodoro, and I switch to Stopwatch tab, what happens?
+    // Ideally, the UI should reflect the RUNNING state. 
+    // If I have a running Pomodoro, and I go to Stopwatch tab, maybe I should see the running timer?
+    // OR, we disable tab switching while running? 
+    // For now, let's assume the user stops before switching or validly switches.
+    // If we switch tabs, we don't necessarily change the timer KIND unless we start a new one.
+  }, []);
+
+  // Update active tab based on running state to ensure user sees the right interface
+  useEffect(() => {
+    if (timerState?.isRunning) {
+      const runningTab = timerState.kind === "pomodoro" ? "timer" : "stopwatch";
+      if (activeTab !== runningTab && activeTab !== "manual") {
+        // Optionally force switch, or just let user be. 
+        // Let's NOT force switch for now to avoid jarring UX, 
+        // but we could show a banner "Timer is running incognito"
+        setActiveTab(runningTab);
+      }
     }
-  }, [timerState?.isRunning, timerState?.kind, timerState?.taskId, timerStore]);
+  }, [timerState?.isRunning, timerState?.kind]);
 
   const handleManualEntryCreated = useCallback(() => {
     void refreshData();
@@ -243,40 +303,74 @@ export function Dashboard() {
         <p className="text-muted-foreground">Today: {todayTotal}</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <CardTitle>Timer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <TimerHero
-              state={uiState}
-              elapsedSeconds={elapsedSeconds}
-              progress={progress}
-              isPomodoroMode={timerState?.kind === "pomodoro"}
-              selectedTaskId={timerState?.taskId ?? null}
-              tasks={tasks}
-              pomodoroPhase={timerState?.pomodoro?.phase}
-              pomodoroSession={(timerState?.pomodoro?.cycleCount ?? 0) + 1}
-              onSelectTask={handleSelectTask}
-              onStart={handleStart}
-              onPause={handlePause}
-              onResume={handleResume}
-              onStop={handleStop}
-              onTogglePomodoro={handleTogglePomodoro}
-            />
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
+              <TabsTrigger value="timer">Timer</TabsTrigger>
+              <TabsTrigger value="stopwatch">Stopwatch</TabsTrigger>
+              <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+            </TabsList>
 
-        <Card className="md:col-span-2">
-          <ManualEntryForm
-            deviceId={deviceId}
-            tasks={tasks}
-            onCreated={handleManualEntryCreated}
-          />
-        </Card>
+            <TabsContent value="timer">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Focus Timer</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TimerHero
+                    state={uiState}
+                    elapsedSeconds={elapsedSeconds}
+                    progress={progress}
+                    isPomodoroMode={true}
+                    selectedTaskId={timerState?.taskId ?? selectedTaskId}
+                    tasks={tasks}
+                    pomodoroPhase={timerState?.pomodoro?.phase}
+                    pomodoroSession={(timerState?.pomodoro?.cycleCount ?? 0) + 1}
+                    onSelectTask={handleSelectTask}
+                    onStart={handleStart}
+                    onPause={handlePause}
+                    onResume={handleResume}
+                    onStop={handleStop}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-        <div className="md:col-span-2">
+            <TabsContent value="stopwatch">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stopwatch</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <StopwatchHero
+                    state={uiState}
+                    elapsedSeconds={elapsedSeconds}
+                    selectedTaskId={timerState?.taskId ?? selectedTaskId}
+                    tasks={tasks}
+                    onSelectTask={handleSelectTask}
+                    onStart={handleStart}
+                    onPause={handlePause}
+                    onResume={handleResume}
+                    onStop={handleStop}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="manual">
+              <ManualEntryForm
+                deviceId={deviceId}
+                tasks={tasks}
+                selectedTaskId={selectedTaskId}
+                onSelectTask={handleSelectTask}
+                onCreated={handleManualEntryCreated}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <div>
           <TodayProgress
             progress={todayProgress}
             totalMinutes={totalTodayMinutes}

@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-
 import type { Session, Task } from "@ticktick/shared";
 import { nowIso } from "@ticktick/shared";
 
@@ -15,68 +14,76 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select.js";
+import { DurationPicker } from "./DurationPicker.js";
+import { DatePicker } from "./ui/date-picker.js";
+import { Calendar as CalendarIcon, Clock, NotebookPen } from "lucide-react";
 
 export type ManualEntryFormProps = {
   deviceId: string;
   tasks: Task[];
   initialSession?: Session | null;
+  selectedTaskId?: string | null;
+  onSelectTask?: (taskId: string) => void;
   onCreated?: () => void;
   onUpdated?: () => void;
   onCancel?: () => void;
 };
 
-function localNoonIso(dateIso: string): string {
-  const [y, m, d] = dateIso.split("-").map((x) => Number(x));
-  const dt = new Date(y!, (m ?? 1) - 1, d ?? 1, 12, 0, 0, 0);
+function getNoonIso(d: Date): string {
+  const dt = new Date(d);
+  dt.setHours(12, 0, 0, 0);
   return dt.toISOString();
-}
-
-/**
- * Extracts "YYYY-MM-DD" from a session's startAt ISO string,
- * assuming the session was recorded in local time or we just want the date part.
- *
- * For a robust implementation dealing with time zones, you might want a specialized helper.
- * Here we simply take the first 10 chars if available.
- */
-function getIsoDatePart(isoString: string): string {
-  return isoString.split("T")[0] ?? isoString;
 }
 
 export function ManualEntryForm({
   deviceId,
   tasks,
   initialSession,
+  selectedTaskId,
+  onSelectTask,
   onCreated,
   onUpdated,
   onCancel,
 }: ManualEntryFormProps) {
+  // Sync with prop if provided, otherwise local state
+  const [localTaskId, setLocalTaskId] = useState(
+    initialSession?.taskId ?? tasks[0]?.id ?? ""
+  );
+
+  const taskId =
+    selectedTaskId !== undefined ? selectedTaskId ?? "" : localTaskId;
+
+  const handleTaskChange = (newId: string) => {
+    if (onSelectTask) {
+      onSelectTask(newId);
+    } else {
+      setLocalTaskId(newId);
+    }
+  };
+
   const defaultDate = useMemo(() => {
     if (initialSession) {
-      return getIsoDatePart(initialSession.startAt);
+      return new Date(initialSession.startAt);
     }
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+    return new Date();
   }, [initialSession]);
 
-  const [taskId, setTaskId] = useState(initialSession?.taskId ?? tasks[0]?.id ?? "");
-  const [date, setDate] = useState(defaultDate);
+  const [date, setDate] = useState<Date | undefined>(defaultDate);
+
   // Default to 30 mins or calculate from session
   const [minutes, setMinutes] = useState(
-    initialSession ? Math.floor((initialSession.durationSeconds ?? 1800) / 60) : 30
+    initialSession
+      ? Math.floor((initialSession.durationSeconds ?? 1800) / 60)
+      : 30
   );
   const [note, setNote] = useState(initialSession?.note ?? "");
-
-  // If tasks list changes or we switch to edit mode for a task not in list (archived?), handle gracefully:
-  // (Optional: ensuring taskId is valid logic can go here)
 
   async function onSubmit() {
     if (taskId === "") return;
     if (!Number.isFinite(minutes) || minutes <= 0) return;
+    if (!date) return;
 
-    const startAt = localNoonIso(date);
+    const startAt = getNoonIso(date);
     const endAt = new Date(
       new Date(startAt).getTime() + minutes * 60_000
     ).toISOString();
@@ -117,17 +124,21 @@ export function ManualEntryForm({
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-0 shadow-none md:border md:shadow-sm">
+      <CardHeader className="px-0 md:px-6">
         <CardTitle>{initialSession ? "Edit Entry" : "Manual Entry"}</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <CardContent className="px-0 md:px-6">
+        <div className="flex flex-col gap-6">
+
+          {/* Task & Date Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Task</label>
-              <Select value={taskId} onValueChange={setTaskId}>
-                <SelectTrigger>
+              <label className="text-sm font-medium flex items-center gap-2">
+                Task
+              </label>
+              <Select value={taskId} onValueChange={handleTaskChange}>
+                <SelectTrigger className="h-10">
                   <SelectValue placeholder="Select task" />
                 </SelectTrigger>
                 <SelectContent>
@@ -141,43 +152,47 @@ export function ManualEntryForm({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Date</label>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Minutes</label>
-              <Input
-                type="number"
-                value={minutes}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-                min={1}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Note (optional)</label>
-              <Input
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Add a note..."
-              />
+              <label className="text-sm font-medium flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+                Date
+              </label>
+              <DatePicker date={date} onSelect={setDate} className="h-10" />
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={onSubmit} className="flex-1 md:flex-none">
+          {/* Duration Section */}
+          <div className="space-y-4 rounded-lg border p-4 bg-secondary/10">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              Duration
+            </label>
+            <DurationPicker value={minutes} onChange={setMinutes} />
+          </div>
+
+          {/* Note Section */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium flex items-center gap-2">
+              <NotebookPen className="w-4 h-4 text-muted-foreground" />
+              Note
+            </label>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add details about this session..."
+              className="h-10"
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 pt-4">
+            <Button onClick={onSubmit} className="flex-1 h-11 text-base shadow-lg hover:shadow-xl transition-all">
               {initialSession ? "Update Entry" : "Add Entry"}
             </Button>
             {onCancel && (
               <Button
                 variant="outline"
                 onClick={onCancel}
-                className="flex-1 md:flex-none"
+                className="flex-1 md:flex-none h-11"
               >
                 Cancel
               </Button>

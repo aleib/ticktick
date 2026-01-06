@@ -4,19 +4,15 @@ import { TimerControls } from './TimerControls';
 import { TaskPicker } from './TaskPicker';
 import type { Task } from '@ticktick/shared';
 import { cn } from '@/lib/utils';
-import { Timer } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
 type TimerState = 'idle' | 'running' | 'paused' | 'break';
 
-interface TimerHeroProps {
+interface StopwatchHeroProps {
   state: TimerState;
   elapsedSeconds: number;
-  progress: number;
-  isPomodoroMode: boolean; // Keeping this for now if upper layer still passes it, but effectively always true visually
   selectedTaskId: string | null;
   tasks: Task[];
-  pomodoroPhase?: 'work' | 'shortBreak' | 'longBreak';
-  pomodoroSession?: number;
   onSelectTask: (taskId: string) => void;
   onStart: () => void;
   onPause: () => void;
@@ -24,28 +20,17 @@ interface TimerHeroProps {
   onStop: () => void;
 }
 
-export function TimerHero({
+export function StopwatchHero({
   state,
   elapsedSeconds,
-  progress,
-  isPomodoroMode,
   selectedTaskId,
   tasks,
-  pomodoroPhase,
-  pomodoroSession,
   onSelectTask,
   onStart,
   onPause,
   onResume,
   onStop,
-}: TimerHeroProps) {
-  const getPomodoroLabel = () => {
-    if (pomodoroPhase === 'work') {
-      return `Session ${pomodoroSession ?? 1}`;
-    }
-    return pomodoroPhase === 'longBreak' ? 'Long Break' : 'Short Break';
-  };
-
+}: StopwatchHeroProps) {
   return (
     <div
       className={cn(
@@ -60,13 +45,13 @@ export function TimerHero({
         "text-sm font-medium bg-primary/10 text-primary"
       )}
       >
-        <Timer className="h-4 w-4" />
-        Pomodoro
+        <Zap className="h-4 w-4" />
+        Stopwatch
       </div>
 
       {/* Timer circle */}
       <CircularProgress
-        progress={progress}
+        progress={0} // Always 0 or could be used for something else later
         state={state}
         size={280}
         strokeWidth={4}
@@ -82,12 +67,8 @@ export function TimerHero({
           onSelect={onSelectTask}
           disabled={state === 'running'}
         />
-
-        <span className={cn(
-          "text-sm font-medium",
-          state === 'break' ? "text-timer-break" : "text-muted-foreground"
-        )}>
-          {getPomodoroLabel()}
+        <span className="text-sm font-medium text-muted-foreground">
+          Count Up
         </span>
       </div>
 
@@ -112,4 +93,3 @@ export function TimerHero({
     </div>
   );
 }
-
