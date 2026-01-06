@@ -224,9 +224,14 @@ export function Dashboard() {
   // --- Event handlers ---
 
   const handleStart = useCallback(async () => {
-    if (!timerState?.taskId || timerState.isRunning) return;
-    await timerStore.start(timerState.taskId, timerState.kind);
-  }, [timerState?.taskId, timerState?.isRunning, timerState?.kind, timerStore]);
+    if (timerState?.isRunning) return;
+
+    const taskId = selectedTaskId;
+    if (!taskId) return;
+
+    const kind = activeTab === "timer" ? "pomodoro" : "normal";
+    await timerStore.start(taskId, kind);
+  }, [timerState?.isRunning, selectedTaskId, activeTab, timerStore]);
 
   const handlePause = useCallback(async () => {
     await timerStore.pause();
