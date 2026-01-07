@@ -1,39 +1,19 @@
-import { useEffect, useMemo } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "../hooks/use-theme.jsx";
+import { useMemo } from "react";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppLayout } from "../components/layout/AppLayout.js";
 import { Toaster } from "../components/ui/toaster.js";
-import { TimerStore } from "../timer/timerStore.js";
+import { ThemeProvider } from "../hooks/use-theme.jsx";
 import { ensureDeviceId } from "../sync/deviceId.js";
 
 import { Dashboard } from "../pages/Dashboard.js";
-import { Tasks } from "../pages/Tasks.js";
-import { Reports } from "../pages/Reports.js";
-import { Settings } from "../pages/Settings.js";
 import { NotFound } from "../pages/NotFound.js";
+import { Reports } from "../pages/Reports.js";
 import { Sessions } from "../pages/Sessions.js";
+import { Settings } from "../pages/Settings.js";
+import { Tasks } from "../pages/Tasks.js";
 
 export function App() {
   const deviceId = useMemo(() => ensureDeviceId(), []);
-  const timerStore = useMemo(() => new TimerStore({ deviceId }), [deviceId]);
-
-  useEffect(() => {
-    // On reload, the app should never silently keep running. We persist state but pause it.
-    const onLifecycle = () => {
-      void timerStore.pauseForLifecycle();
-    };
-    window.addEventListener("pagehide", onLifecycle);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden") {
-        onLifecycle();
-      }
-    });
-    return () => {
-      window.removeEventListener("pagehide", onLifecycle);
-    };
-  }, [timerStore]);
-
-
 
   return (
     <ThemeProvider defaultTheme="system" storageKey="ticktick-theme">
