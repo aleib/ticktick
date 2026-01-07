@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
 import type { Session, Task } from "@ticktick/shared";
 import { nowIso } from "@ticktick/shared";
+import { useMemo, useState } from "react";
 
+import { Calendar as CalendarIcon, Clock, NotebookPen } from "lucide-react";
 import { db } from "../db/db.js";
 import { enqueueMutation } from "../sync/outbox.js";
+import { DurationPicker } from "./DurationPicker.js";
 import { Button } from "./ui/button.js";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card.js";
 import { Input } from "./ui/input.js";
@@ -14,9 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select.js";
-import { DurationPicker } from "./DurationPicker.js";
-import { DatePicker } from "./ui/date-picker.js";
-import { Calendar as CalendarIcon, Clock, NotebookPen } from "lucide-react";
 
 export type ManualEntryFormProps = {
   deviceId: string;
@@ -29,11 +28,15 @@ export type ManualEntryFormProps = {
   onCancel?: () => void;
 };
 
-function getNoonIso(d: Date): string {
-  const dt = new Date(d);
-  dt.setHours(12, 0, 0, 0);
-  return dt.toISOString();
-}
+const formatLocalDateTime = (d: Date) => {
+  const pad = (n: number) => `${n}`.padStart(2, "0");
+  const year = d.getFullYear();
+  const month = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hours = pad(d.getHours());
+  const minutes = pad(d.getMinutes());
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 export function ManualEntryForm({
   deviceId,
@@ -61,14 +64,14 @@ export function ManualEntryForm({
     }
   };
 
-  const defaultDate = useMemo(() => {
+  const defaultDateTime = useMemo(() => {
     if (initialSession) {
-      return new Date(initialSession.startAt);
+      return formatLocalDateTime(new Date(initialSession.startAt));
     }
-    return new Date();
+    return formatLocalDateTime(new Date());
   }, [initialSession]);
 
-  const [date, setDate] = useState<Date | undefined>(defaultDate);
+  const [dateTimeValue, setDateTimeValue] = useState(defaultDateTime);
 
   // Default to 30 mins or calculate from session
   const [minutes, setMinutes] = useState(
@@ -81,11 +84,12 @@ export function ManualEntryForm({
   async function onSubmit() {
     if (taskId === "") return;
     if (!Number.isFinite(minutes) || minutes <= 0) return;
-    if (!date) return;
+    const startDate = new Date(dateTimeValue);
+    if (Number.isNaN(startDate.getTime())) return;
 
-    const startAt = getNoonIso(date);
+    const startAt = startDate.toISOString();
     const endAt = new Date(
-      new Date(startAt).getTime() + minutes * 60_000
+      startDate.getTime() + minutes * 60_000
     ).toISOString();
     const now = nowIso();
 
@@ -130,7 +134,6 @@ export function ManualEntryForm({
       </CardHeader>
       <CardContent className="px-0 md:px-6">
         <div className="flex flex-col gap-6">
-
           {/* Task & Date Row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
@@ -154,9 +157,14 @@ export function ManualEntryForm({
             <div className="space-y-2">
               <label className="text-sm font-medium flex items-center gap-2">
                 <CalendarIcon className="w-4 h-4 text-muted-foreground" />
-                Date
+                Date &amp; Time
               </label>
-              <DatePicker date={date} onSelect={setDate} className="h-10" />
+              <Input
+                type="datetime-local"
+                value={dateTimeValue}
+                onChange={(e) => setDateTimeValue(e.target.value)}
+                className="h-10"
+              />
             </div>
           </div>
 
@@ -185,7 +193,10 @@ export function ManualEntryForm({
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
-            <Button onClick={onSubmit} className="flex-1 h-11 text-base shadow-lg hover:shadow-xl transition-all">
+            <Button
+              onClick={onSubmit}
+              className="flex-1 h-11 text-base shadow-lg hover:shadow-xl transition-all"
+            >
               {initialSession ? "Update Entry" : "Add Entry"}
             </Button>
             {onCancel && (
