@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
-import type { Task, Category } from "@ticktick/shared";
+import type { Session, Task, Category } from "@ticktick/shared";
 import { Check } from "lucide-react";
+import { DailyTimeline } from "./DailyTimeline.js";
 
 type DailyProgress = {
   taskId: string;
@@ -15,6 +16,7 @@ interface TodayProgressProps {
   categories?: Category[];
   selectedTaskId?: string | null;
   onSelectTask?: (taskId: string) => void;
+  sessions: Session[];
 }
 
 function formatDuration(minutes: number): string {
@@ -32,6 +34,7 @@ export function TodayProgress({
   categories = [],
   selectedTaskId,
   onSelectTask,
+  sessions,
 }: TodayProgressProps) {
   if (progress.length === 0) {
     return (
@@ -43,6 +46,15 @@ export function TodayProgress({
       </div>
     );
   }
+
+  // Create taskMap for DailyTimeline
+  const taskMap = progress.reduce(
+    (acc, { taskId, task }) => {
+      acc[taskId] = task;
+      return acc;
+    },
+    {} as Record<string, Task>
+  );
 
   return (
     <div className="rounded-xl bg-card/50 border border-border/50 p-6">
@@ -113,6 +125,8 @@ export function TodayProgress({
           );
         })}
       </div>
+
+      <DailyTimeline sessions={sessions} taskMap={taskMap} />
     </div>
   );
 }

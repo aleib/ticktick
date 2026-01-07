@@ -233,6 +233,24 @@ export function Dashboard() {
     return todayProgress.reduce((sum, p) => sum + p.loggedMinutes, 0);
   }, [todayProgress]);
 
+  /** Filter sessions for today */
+  const todaySessions = useMemo(() => {
+    const dayStart = new Date(todayIso);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayStartMs = dayStart.getTime();
+
+    const dayEnd = new Date(todayIso);
+    dayEnd.setHours(23, 59, 59, 999);
+    const dayEndMs = dayEnd.getTime();
+
+    return sessions.filter((s) => {
+      if (s.deletedAt != null) return false;
+      if (s.endAt == null) return false;
+      const startMs = new Date(s.startAt).getTime();
+      return startMs >= dayStartMs && startMs <= dayEndMs;
+    });
+  }, [sessions, todayIso]);
+
   // --- Event handlers ---
 
   const handleStart = useCallback(async () => {
@@ -403,6 +421,7 @@ export function Dashboard() {
             onSelectTask={(taskId) =>
               handleSelectTask(taskId, { autoStart: true, switchRunning: true })
             }
+            sessions={todaySessions}
           />
         </div>
       </div>
