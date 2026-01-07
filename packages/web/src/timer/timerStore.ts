@@ -104,6 +104,15 @@ export class TimerStore {
 
     const session = stopTimer(state, { endAtIso });
 
+    // Discard short sessions (< 15 seconds)
+    // durationSeconds should exist if stopped correctly, but safeguard against null
+    if ((session.durationSeconds ?? 0) < 15) {
+      console.log(`[TimerStore] Session too short (${session.durationSeconds}s), deleting running state only.`);
+      await db.runningTimer.delete("singleton");
+      this.stopTicking();
+      return null;
+    }
+
     await db.transaction("rw", db.sessions, db.runningTimer, db.outbox, async () => {
       await db.sessions.put(session);
       await enqueueMutation({
