@@ -46,7 +46,10 @@ export function TodayProgress({ progress, totalMinutes }: TodayProgressProps) {
 
       <div className="space-y-4">
         {progress.map(({ taskId, task, loggedMinutes, targetMinutes }) => {
-          const percent = Math.min((loggedMinutes / targetMinutes) * 100, 100);
+          const percent =
+            targetMinutes > 0
+              ? Math.min((loggedMinutes / targetMinutes) * 100, 100)
+              : 100;
           const isComplete = percent >= 100;
 
           return (
@@ -58,8 +61,12 @@ export function TodayProgress({ progress, totalMinutes }: TodayProgressProps) {
                 </div>
                 <span className="text-sm text-muted-foreground">
                   {formatDuration(loggedMinutes)}
-                  <span className="mx-1">/</span>
-                  {formatDuration(targetMinutes)}
+                  {targetMinutes > 0 && (
+                    <>
+                      <span className="mx-1">/</span>
+                      {formatDuration(targetMinutes)}
+                    </>
+                  )}
                 </span>
               </div>
               <div className="h-2 bg-progress-bg rounded-full overflow-hidden">
