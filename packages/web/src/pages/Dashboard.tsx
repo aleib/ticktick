@@ -1,4 +1,4 @@
-import type { RunningTimerState, Session, Task } from "@ticktick/shared";
+import type { RunningTimerState, Session, Task, Category } from "@ticktick/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ManualEntryForm } from "../components/ManualEntryForm.js";
 import { TodayProgress } from "../components/dashboard/TodayProgress.js";
@@ -54,6 +54,7 @@ export function Dashboard() {
   // --- State ---
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [timerState, setTimerState] = useState<RunningTimerState | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -88,13 +89,15 @@ export function Dashboard() {
 
   /** Refresh all data from IndexedDB */
   const refreshData = useCallback(async () => {
-    const [allTasks, allSessions] = await Promise.all([
+    const [allTasks, allSessions, allCategories] = await Promise.all([
       db.tasks.toArray(),
       db.sessions.toArray(),
+      db.categories.toArray(),
     ]);
 
     setTasks(allTasks.filter((t) => t.deletedAt == null && !t.isArchived));
     setSessions(allSessions.filter((s) => s.deletedAt == null));
+    setCategories(allCategories.filter((c) => c.deletedAt == null));
   }, []);
 
   // Initial data load
@@ -395,6 +398,7 @@ export function Dashboard() {
           <TodayProgress
             progress={todayProgress}
             totalMinutes={totalTodayMinutes}
+            categories={categories}
             selectedTaskId={timerState?.taskId ?? selectedTaskId}
             onSelectTask={(taskId) =>
               handleSelectTask(taskId, { autoStart: true, switchRunning: true })

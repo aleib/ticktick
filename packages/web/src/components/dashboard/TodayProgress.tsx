@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Task } from "@ticktick/shared";
+import type { Task, Category } from "@ticktick/shared";
 import { Check } from "lucide-react";
 
 type DailyProgress = {
@@ -12,6 +12,7 @@ type DailyProgress = {
 interface TodayProgressProps {
   progress: DailyProgress[];
   totalMinutes: number;
+  categories?: Category[];
   selectedTaskId?: string | null;
   onSelectTask?: (taskId: string) => void;
 }
@@ -28,6 +29,7 @@ function formatDuration(minutes: number): string {
 export function TodayProgress({
   progress,
   totalMinutes,
+  categories = [],
   selectedTaskId,
   onSelectTask,
 }: TodayProgressProps) {
@@ -60,6 +62,13 @@ export function TodayProgress({
           const isComplete = percent >= 100;
           const isSelected = taskId === selectedTaskId;
 
+          // Determine color: Task Color -> Category Color -> Default (Primary)
+          const taskColor = task.color;
+          const categoryColor = task.category
+            ? categories.find(c => c.name === task.category)?.color
+            : null;
+          const barColor = taskColor || categoryColor || 'hsl(var(--primary))';
+
           return (
             <div
               key={taskId}
@@ -82,7 +91,7 @@ export function TodayProgress({
                   >
                     {task.title}
                   </span>
-                  {isComplete && <Check className="h-4 w-4 text-success" />}
+                  {isComplete && <Check className="h-4 w-4 text-muted-foreground/50" />}
                 </div>
                 <span className="text-sm text-muted-foreground">
                   {formatDuration(loggedMinutes)}
@@ -96,11 +105,8 @@ export function TodayProgress({
               </div>
               <div className="h-2 bg-secondary/30 rounded-full overflow-hidden">
                 <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500 ease-out",
-                    isComplete ? "bg-success" : "bg-primary"
-                  )}
-                  style={{ width: `${percent}%` }}
+                  className="h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${percent}%`, backgroundColor: barColor }}
                 />
               </div>
             </div>

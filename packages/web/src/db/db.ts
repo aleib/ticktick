@@ -1,6 +1,7 @@
 import Dexie, { type Table } from "dexie";
 
 import type {
+  Category,
   RunningTimerState,
   Session,
   Settings,
@@ -11,7 +12,7 @@ export type OutboxMutationRow = {
   id: string; // UUID
   deviceId: string;
   op: "upsert" | "delete";
-  entityType: "task" | "session" | "settings";
+  entityType: "task" | "session" | "settings" | "category";
   entityId: string | null;
   payload: unknown;
   clientTs: string; // ISO datetime
@@ -36,6 +37,7 @@ export type SyncStateRow = {
 export class TickTickDb extends Dexie {
   tasks!: Table<Task, string>;
   sessions!: Table<Session, string>;
+  categories!: Table<Category, string>;
   settings!: Table<Settings, "singleton">;
 
   runningTimer!: Table<RunningTimerState, "singleton">;
@@ -52,6 +54,10 @@ export class TickTickDb extends Dexie {
       runningTimer: "id",
       outbox: "id, status, clientTs, entityType, entityId",
       syncState: "id",
+    });
+
+    this.version(2).stores({
+      categories: "id, &name, updatedAt, deletedAt",
     });
   }
 }

@@ -57,6 +57,7 @@ export const taskSchema: z.ZodType<Task> = z.object({
   title: z.string().min(1),
   description: z.string().nullable(),
   category: z.string().nullable(),
+  color: z.string().nullable(),
   recurrenceRule: recurrenceRuleSchema.nullable(),
   targetDailyMinutes: z.number().int().nonnegative().nullable(),
   targetWeeklyMinutes: z.number().int().nonnegative().nullable(),
@@ -120,7 +121,10 @@ export const mutationOpSchema: z.ZodType<MutationOp> = z.union([
 export const entityTypeSchema: z.ZodType<EntityType> = z.union([
   z.literal("task"),
   z.literal("session"),
+  z.literal("task"),
+  z.literal("session"),
   z.literal("settings"),
+  z.literal("category"),
 ]);
 
 export const mutationSchema: z.ZodType<Mutation, z.ZodTypeDef, MutationInput> =

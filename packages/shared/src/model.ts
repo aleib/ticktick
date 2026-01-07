@@ -11,12 +11,14 @@ export type IsoDateString = string; // YYYY-MM-DD (date-only, no time)
 
 export type TaskId = Uuid;
 export type SessionId = Uuid;
+export type CategoryId = Uuid;
 
 export type Task = {
   id: TaskId;
   title: string;
   description: string | null;
   category: string | null;
+  color: string | null;
 
   /**
    * Recurrence is optional and intentionally not full RFC RRULE for MVP.
@@ -29,6 +31,15 @@ export type Task = {
 
   isArchived: boolean;
 
+  createdAt: string; // ISO datetime
+  updatedAt: string; // ISO datetime
+  deletedAt: string | null; // ISO datetime
+};
+
+export type Category = {
+  id: CategoryId;
+  name: string;
+  color: string | null;
   createdAt: string; // ISO datetime
   updatedAt: string; // ISO datetime
   deletedAt: string | null; // ISO datetime
@@ -89,7 +100,7 @@ export type RecurrenceRule =
   };
 
 export type MutationOp = "upsert" | "delete";
-export type EntityType = "task" | "session" | "settings";
+export type EntityType = "task" | "session" | "settings" | "category";
 
 export type Mutation = {
   id: Uuid;

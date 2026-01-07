@@ -11,6 +11,7 @@ export function createNewTask(title: string): Task {
     title,
     description: null,
     category: null,
+    color: null,
     recurrenceRule: null,
     targetDailyMinutes: null,
     targetWeeklyMinutes: null,

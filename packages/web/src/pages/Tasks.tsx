@@ -19,9 +19,11 @@ import {
 import { db } from '../db/db.js';
 import { ensureDeviceId } from '../sync/deviceId.js';
 import { enqueueMutation } from '../sync/outbox.js';
-import type { Task, RecurrenceRule } from '@ticktick/shared';
+import type { Task, RecurrenceRule, Category } from '@ticktick/shared';
 import { nowIso } from '@ticktick/shared';
 import { cn } from '@/lib/utils';
+import { ColorPicker } from '@/components/ui/ColorPicker';
+import { generateColorSuggestion } from '@/lib/colorUtils';
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -37,11 +39,14 @@ function jsToIsoDay(js: number): 1 | 2 | 3 | 4 | 5 | 6 | 7 {
 
 export function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
+    categoryColor: '',
+    taskColor: '',
     description: '',
     dailyTargetMinutes: 30,
     weeklyTargetMinutes: 150,
@@ -53,10 +58,19 @@ export function Tasks() {
     void db.tasks
       .toArray()
       .then((rows) => setTasks(rows.filter((t) => t.deletedAt == null)));
+
+    void db.categories
+      .toArray()
+      .then(rows => setCategories(rows.filter(c => c.deletedAt == null)));
   }, []);
 
   const activeTasks = tasks.filter(t => !t.isArchived);
   const archivedTasks = tasks.filter(t => t.isArchived);
+
+  // Helper to find category color
+  const getCategoryColor = (name: string): string | null => {
+    return categories.find(c => c.name === name)?.color || null;
+  };
 
   const tasksByCategory = activeTasks.reduce((acc, task) => {
     const category = task.category || 'Uncategorized';
@@ -71,6 +85,8 @@ export function Tasks() {
     setFormData({
       title: '',
       category: '',
+      categoryColor: '',
+      taskColor: '',
       description: '',
       dailyTargetMinutes: 30,
       weeklyTargetMinutes: 150,
@@ -88,6 +104,8 @@ export function Tasks() {
       setFormData({
         title: task.title,
         category: task.category || '',
+        categoryColor: task.category ? getCategoryColor(task.category) || '' : '',
+        taskColor: task.color || '',
         description: task.description || '',
         dailyTargetMinutes: task.targetDailyMinutes ?? 30,
         weeklyTargetMinutes: task.targetWeeklyMinutes ?? 150,
@@ -103,6 +121,45 @@ export function Tasks() {
     e.preventDefault();
     const now = nowIso();
 
+    // Handle Category Creation/Update
+    if (formData.category) {
+      const existingCategory = categories.find(c => c.name === formData.category);
+      if (!existingCategory) {
+        // Create new category
+        const newCategory: Category = {
+          id: crypto.randomUUID(),
+          name: formData.category,
+          color: formData.categoryColor || null,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        };
+        await db.categories.put(newCategory);
+        await enqueueMutation({
+          deviceId,
+          op: 'upsert',
+          entityType: 'category',
+          entityId: newCategory.id,
+          payload: newCategory,
+          clientTs: now,
+        });
+        setCategories(prev => [...prev, newCategory]);
+      } else if (formData.categoryColor && existingCategory.color !== formData.categoryColor) {
+        // Update category color if changed
+        const updatedCategory = { ...existingCategory, color: formData.categoryColor, updatedAt: now };
+        await db.categories.put(updatedCategory);
+        await enqueueMutation({
+          deviceId,
+          op: 'upsert',
+          entityType: 'category',
+          entityId: updatedCategory.id,
+          payload: updatedCategory,
+          clientTs: now,
+        });
+        setCategories(prev => prev.map(c => c.id === updatedCategory.id ? updatedCategory : c));
+      }
+    }
+
     const recurrenceRule: RecurrenceRule = {
       freq: 'WEEKLY',
       byWeekdays: formData.recurrenceDays as Array<1 | 2 | 3 | 4 | 5 | 6 | 7>,
@@ -113,6 +170,7 @@ export function Tasks() {
         ...editingTask,
         title: formData.title,
         category: formData.category || null,
+        color: formData.taskColor || null,
         description: formData.description || null,
         targetDailyMinutes: formData.dailyTargetMinutes,
         targetWeeklyMinutes: formData.weeklyTargetMinutes,
@@ -134,6 +192,7 @@ export function Tasks() {
         id: crypto.randomUUID(),
         title: formData.title,
         category: formData.category || null,
+        color: formData.taskColor || null,
         description: formData.description || null,
         targetDailyMinutes: formData.dailyTargetMinutes,
         targetWeeklyMinutes: formData.weeklyTargetMinutes,
@@ -216,26 +275,55 @@ export function Tasks() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g., Deep Work"
-                  required
-                  className="bg-secondary/50 border-0"
-                />
+                <Label htmlFor="category">Category</Label>
+                <div className="flex gap-2 items-start">
+                  <div className="flex gap-2">
+                    <ColorPicker
+                      value={formData.categoryColor}
+                      onChange={(color) => setFormData(prev => ({ ...prev, categoryColor: color }))}
+                      className="w-6 h-6 p-0 m-auto"
+                    />
+                    <Input
+                      id="category"
+                      value={formData.category}
+                      onChange={e => {
+                        const newCategory = e.target.value;
+                        const existingCat = categories.find(c => c.name === newCategory);
+                        setFormData(prev => ({
+                          ...prev,
+                          category: newCategory,
+                          categoryColor: existingCat?.color || prev.categoryColor,
+                          // Suggest a task color if one isn't set, based on category
+                          taskColor: (prev.taskColor === '' && newCategory)
+                            ? generateColorSuggestion(existingCat?.color || '#808080')
+                            : prev.taskColor
+                        }));
+                      }}
+                      placeholder="e.g., Work"
+                      required
+                      className="bg-secondary/50 border-0"
+                    />
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Input
-                  id="category"
-                  value={formData.category}
-                  onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  placeholder="e.g., Work"
-                  required
-                  className="bg-secondary/50 border-0"
-                />
+                <Label htmlFor="title">Title</Label>
+                <div className="flex gap-2">
+                  <ColorPicker
+                    value={formData.taskColor}
+                    onChange={(color) => setFormData(prev => ({ ...prev, taskColor: color }))}
+                    onClear={() => setFormData(prev => ({ ...prev, taskColor: '' }))}
+                    className="w-6 h-6 p-0 m-auto"
+                  />
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="e.g., Deep Work"
+                    required
+                    className="bg-secondary/50 border-0"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -306,48 +394,58 @@ export function Tasks() {
 
       {/* Active Tasks */}
       <div className="space-y-6">
-        {Object.entries(tasksByCategory).map(([category, categoryTasks]) => (
-          <div key={category}>
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-              {category}
-            </h2>
-            <div className="space-y-2">
-              {categoryTasks.map(task => (
+        {Object.entries(tasksByCategory).map(([category, categoryTasks]) => {
+          const categoryColor = getCategoryColor(category);
+          return (
+            <div key={category}>
+              <div className="flex items-center gap-2 mb-3">
                 <div
-                  key={task.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-card/50 border border-border/50 hover:bg-card transition-colors"
-                >
-                  <div>
-                    <h3 className="font-medium">{task.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {task.targetDailyMinutes}m daily • {task.targetWeeklyMinutes}m weekly
-                    </p>
+                  className="w-3 h-3 rounded-full"
+                  style={{ backgroundColor: categoryColor || 'transparent', border: categoryColor ? 'none' : '1px solid currentColor' }}
+                />
+                <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  {category}
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {categoryTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-4 rounded-lg bg-card/50 border border-border/50 hover:bg-card transition-colors"
+                    style={{ borderLeft: `4px solid ${task.color || categoryColor || 'transparent'}` }}
+                  >
+                    <div>
+                      <h3 className="font-medium">{task.title}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {task.targetDailyMinutes}m daily • {task.targetWeeklyMinutes}m weekly
+                      </p>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem onClick={() => handleOpenDialog(task)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => void archiveTask(task.id)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem onClick={() => handleOpenDialog(task)}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => void archiveTask(task.id)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archive
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Archived Tasks */}
