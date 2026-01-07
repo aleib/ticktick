@@ -61,7 +61,7 @@ export function Dashboard() {
 
   // Persistent Tab State
   const [activeTab, setActiveTab] = useState<string>(() => {
-    return localStorage.getItem("dashboard.activeTab") || "timer";
+    return localStorage.getItem("dashboard.activeTab") || "stopwatch";
   });
 
   // Persistent Task Selection (shared across tabs when idle)
@@ -189,7 +189,14 @@ export function Dashboard() {
   const todayProgress = useMemo(() => {
     const isoWeekday = getTodayIsoWeekday();
 
+    const daily = computeDailyTotals(sessions, todayIso);
+
     const activeTasks = tasks.filter((task) => {
+      // Always include if there is logged time today
+      const loggedSeconds = daily.totalsByTaskId[task.id] ?? 0;
+      if (loggedSeconds > 0) return true;
+
+      // Otherwise, check if it's scheduled with a target
       if (!task.targetDailyMinutes) return false;
 
       // Check if task is scheduled for today
@@ -205,8 +212,6 @@ export function Dashboard() {
       }
       return false;
     });
-
-    const daily = computeDailyTotals(sessions, todayIso);
 
     return activeTasks.map((task) => {
       const loggedSeconds = daily.totalsByTaskId[task.id] ?? 0;
@@ -317,10 +322,31 @@ export function Dashboard() {
         <div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-4">
-              <TabsTrigger value="timer">Timer</TabsTrigger>
               <TabsTrigger value="stopwatch">Stopwatch</TabsTrigger>
+              <TabsTrigger value="timer">Timer</TabsTrigger>
               <TabsTrigger value="manual">Manual Entry</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="stopwatch">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Stopwatch</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <StopwatchHero
+                    state={uiState}
+                    elapsedSeconds={elapsedSeconds}
+                    selectedTaskId={timerState?.taskId ?? selectedTaskId}
+                    tasks={tasks}
+                    onSelectTask={handleSelectTask}
+                    onStart={handleStart}
+                    onPause={handlePause}
+                    onResume={handleResume}
+                    onStop={handleStop}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="timer">
               <Card>
@@ -337,27 +363,6 @@ export function Dashboard() {
                     tasks={tasks}
                     pomodoroPhase={timerState?.pomodoro?.phase}
                     pomodoroSession={(timerState?.pomodoro?.cycleCount ?? 0) + 1}
-                    onSelectTask={handleSelectTask}
-                    onStart={handleStart}
-                    onPause={handlePause}
-                    onResume={handleResume}
-                    onStop={handleStop}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="stopwatch">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Stopwatch</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <StopwatchHero
-                    state={uiState}
-                    elapsedSeconds={elapsedSeconds}
-                    selectedTaskId={timerState?.taskId ?? selectedTaskId}
-                    tasks={tasks}
                     onSelectTask={handleSelectTask}
                     onStart={handleStart}
                     onPause={handlePause}

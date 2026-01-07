@@ -67,9 +67,6 @@ export function StopwatchHero({
           onSelect={onSelectTask}
           disabled={state === 'running'}
         />
-        <span className="text-sm font-medium text-muted-foreground">
-          Count Up
-        </span>
       </div>
 
       {/* Controls */}
