@@ -12,6 +12,8 @@ type DailyProgress = {
 interface TodayProgressProps {
   progress: DailyProgress[];
   totalMinutes: number;
+  selectedTaskId?: string | null;
+  onSelectTask?: (taskId: string) => void;
 }
 
 function formatDuration(minutes: number): string {
@@ -23,7 +25,12 @@ function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
-export function TodayProgress({ progress, totalMinutes }: TodayProgressProps) {
+export function TodayProgress({
+  progress,
+  totalMinutes,
+  selectedTaskId,
+  onSelectTask,
+}: TodayProgressProps) {
   if (progress.length === 0) {
     return (
       <div className="rounded-xl bg-card/50 border border-border/50 p-6">
@@ -44,19 +51,37 @@ export function TodayProgress({ progress, totalMinutes }: TodayProgressProps) {
         </span>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {progress.map(({ taskId, task, loggedMinutes, targetMinutes }) => {
           const percent =
             targetMinutes > 0
               ? Math.min((loggedMinutes / targetMinutes) * 100, 100)
               : 100;
           const isComplete = percent >= 100;
+          const isSelected = taskId === selectedTaskId;
 
           return (
-            <div key={taskId} className="group">
-              <div className="flex items-center justify-between mb-2">
+            <div
+              key={taskId}
+              className={cn(
+                "group relative p-3 rounded-lg transition-all duration-200 border",
+                onSelectTask && "cursor-pointer",
+                isSelected
+                  ? "bg-accent/10 border-accent/50 shadow-sm"
+                  : "bg-transparent border-transparent hover:bg-accent/5"
+              )}
+              onClick={() => onSelectTask?.(taskId)}
+            >
+              <div className="flex items-center justify-between mb-2 z-10 relative">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{task.title}</span>
+                  <span
+                    className={cn(
+                      "font-medium transition-colors",
+                      isSelected && "text-primary"
+                    )}
+                  >
+                    {task.title}
+                  </span>
                   {isComplete && <Check className="h-4 w-4 text-success" />}
                 </div>
                 <span className="text-sm text-muted-foreground">
@@ -69,11 +94,11 @@ export function TodayProgress({ progress, totalMinutes }: TodayProgressProps) {
                   )}
                 </span>
               </div>
-              <div className="h-2 bg-progress-bg rounded-full overflow-hidden">
+              <div className="h-2 bg-secondary/30 rounded-full overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-500 ease-out",
-                    isComplete ? "bg-success" : "bg-progress-fill"
+                    isComplete ? "bg-success" : "bg-primary"
                   )}
                   style={{ width: `${percent}%` }}
                 />

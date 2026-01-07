@@ -52,7 +52,6 @@ function deriveUIState(timerState: RunningTimerState | null): UIState {
 
 export function Dashboard() {
   // --- State ---
-  // --- State ---
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [timerState, setTimerState] = useState<RunningTimerState | null>(null);
@@ -258,26 +257,33 @@ export function Dashboard() {
   }, [timerStore, refreshData]);
 
   const handleSelectTask = useCallback(
-    async (taskId: string) => {
+    async (
+      taskId: string,
+      options?: { autoStart?: boolean; switchRunning?: boolean }
+    ) => {
       setSelectedTaskId(taskId);
 
-      // If we are in Manual mode, just selecting the task is enough.
-      // If in Timer or Stopwatch mode, we might want to auto-start or just select.
-      // Current behavior was auto-start, let's keep it for Timer/Stopwatch if user clicks a task in the list.
-      // BUT, if the timer is already running, we ignore or switch?
-      // The original code: if (timerState?.isRunning) return;
+      if (options?.autoStart === false) return;
 
-      if (timerState?.isRunning) return;
-
-      if (activeTab === "manual") {
-        return; // Just select
+      if (timerState?.isRunning) {
+        if (options?.switchRunning && timerState.taskId !== taskId) {
+          await timerStore.stop();
+        } else {
+          return;
+        }
       }
 
-      // For timer/stopwatch, auto-start
+      // If in Manual tab but autoStart is requested, default to normal (stopwatch)
+      // Otherwise if not auto-starting, Manual tab just selects (handled by early return above if options.autoStart was false)
+      // But if options.autoStart is UNDEFINED, existing logic was:
+      if (activeTab === "manual" && !options?.autoStart && !options?.switchRunning) {
+        return;
+      }
+
       const kind = activeTab === "timer" ? "pomodoro" : "normal";
       await timerStore.start(taskId, kind);
     },
-    [timerState?.isRunning, activeTab, timerStore]
+    [timerState?.isRunning, timerState?.taskId, activeTab, timerStore]
   );
 
   const handleTogglePomodoro = useCallback(async () => {
@@ -389,6 +395,10 @@ export function Dashboard() {
           <TodayProgress
             progress={todayProgress}
             totalMinutes={totalTodayMinutes}
+            selectedTaskId={timerState?.taskId ?? selectedTaskId}
+            onSelectTask={(taskId) =>
+              handleSelectTask(taskId, { autoStart: true, switchRunning: true })
+            }
           />
         </div>
       </div>
