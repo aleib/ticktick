@@ -1,33 +1,20 @@
+import { getTaskAccentColor } from "@/lib/taskColors";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Session, Task } from "@ticktick/shared";
-
+import type { Category, Session, Task } from "@ticktick/shared";
 interface DailyTimelineProps {
   sessions: Session[];
   taskMap: Record<string, Task>;
+  categories?: Category[];
 }
 
 const DEFAULT_VIEW_START_MINUTES = 7 * 60; // 06:00
 const DEFAULT_VIEW_END_MINUTES = 18 * 60; // 22:00
 const MINUTES_IN_DAY = 24 * 60;
-
-function hashStringToHue(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = str.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return Math.abs(hash % 360);
-}
-
-function getTaskColor(taskId: string): string {
-  const hue = hashStringToHue(taskId);
-  return `hsl(${hue}, 65%, 55%)`;
-}
-
 function formatTime(isoString: string): string {
   const date = new Date(isoString);
   const hours = date.getHours();
@@ -55,7 +42,11 @@ function formatDuration(seconds: number): string {
   return `${hours}h ${mins}m`;
 }
 
-export function DailyTimeline({ sessions, taskMap }: DailyTimelineProps) {
+export function DailyTimeline({
+  sessions,
+  taskMap,
+  categories,
+}: DailyTimelineProps) {
   if (sessions.length === 0) {
     return null;
   }
@@ -97,7 +88,7 @@ export function DailyTimeline({ sessions, taskMap }: DailyTimelineProps) {
 
     const task = taskMap[session.taskId];
     const taskTitle = task?.title || "Unknown Task";
-    const color = getTaskColor(session.taskId);
+    const color = getTaskAccentColor(task ?? null, categories);
 
     return {
       session,

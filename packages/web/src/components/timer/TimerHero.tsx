@@ -2,9 +2,10 @@ import { CircularProgress } from './CircularProgress';
 import { TimerDisplay } from './TimerDisplay';
 import { TimerControls } from './TimerControls';
 import { TaskPicker } from './TaskPicker';
-import type { Task } from '@ticktick/shared';
+import type { Category, Task } from '@ticktick/shared';
 import { cn } from '@/lib/utils';
 import { Timer } from 'lucide-react';
+import { getTaskAccentColor } from '@/lib/taskColors';
 
 type TimerState = 'idle' | 'running' | 'paused' | 'break';
 
@@ -15,6 +16,7 @@ interface TimerHeroProps {
   isPomodoroMode: boolean; // Keeping this for now if upper layer still passes it, but effectively always true visually
   selectedTaskId: string | null;
   tasks: Task[];
+  categories?: Category[];
   pomodoroPhase?: 'work' | 'shortBreak' | 'longBreak';
   pomodoroSession?: number;
   onSelectTask: (taskId: string) => void;
@@ -31,6 +33,7 @@ export function TimerHero({
   isPomodoroMode,
   selectedTaskId,
   tasks,
+  categories,
   pomodoroPhase,
   pomodoroSession,
   onSelectTask,
@@ -46,6 +49,11 @@ export function TimerHero({
     return pomodoroPhase === 'longBreak' ? 'Long Break' : 'Short Break';
   };
 
+  const selectedTask =
+    tasks.find((task) => task.id === selectedTaskId) ?? null;
+  const accentColor = getTaskAccentColor(selectedTask, categories);
+  const accentBackground = `color-mix(in srgb, ${accentColor} 15%, transparent)`;
+
   return (
     <div
       className={cn(
@@ -55,10 +63,16 @@ export function TimerHero({
         state === 'running' && "timer-glow"
       )}
     >
-      <div className={cn(
-        "absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full",
-        "text-sm font-medium bg-primary/10 text-primary"
-      )}
+      <div
+        className={cn(
+          "absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium",
+          "transition-colors"
+        )}
+        style={{
+          color: accentColor,
+          borderColor: accentColor,
+          backgroundColor: accentBackground,
+        }}
       >
         <Timer className="h-4 w-4" />
         Pomodoro

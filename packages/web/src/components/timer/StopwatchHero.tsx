@@ -2,9 +2,10 @@ import { CircularProgress } from './CircularProgress';
 import { TimerDisplay } from './TimerDisplay';
 import { TimerControls } from './TimerControls';
 import { TaskPicker } from './TaskPicker';
-import type { Task } from '@ticktick/shared';
+import type { Category, Task } from '@ticktick/shared';
 import { cn } from '@/lib/utils';
 import { Zap } from 'lucide-react';
+import { getTaskAccentColor } from '@/lib/taskColors';
 
 type TimerState = 'idle' | 'running' | 'paused' | 'break';
 
@@ -13,6 +14,7 @@ interface StopwatchHeroProps {
   elapsedSeconds: number;
   selectedTaskId: string | null;
   tasks: Task[];
+  categories?: Category[];
   onSelectTask: (taskId: string) => void;
   onStart: () => void;
   onPause: () => void;
@@ -25,12 +27,18 @@ export function StopwatchHero({
   elapsedSeconds,
   selectedTaskId,
   tasks,
+  categories,
   onSelectTask,
   onStart,
   onPause,
   onResume,
   onStop,
 }: StopwatchHeroProps) {
+  const selectedTask =
+    tasks.find((task) => task.id === selectedTaskId) ?? null;
+  const accentColor = getTaskAccentColor(selectedTask, categories);
+  const accentBackground = `color-mix(in srgb, ${accentColor} 15%, transparent)`;
+
   return (
     <div
       className={cn(
@@ -40,10 +48,16 @@ export function StopwatchHero({
         state === 'running' && "timer-glow"
       )}
     >
-      <div className={cn(
-        "absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full",
-        "text-sm font-medium bg-primary/10 text-primary"
-      )}
+      <div
+        className={cn(
+          "absolute top-4 right-4 flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium",
+          "transition-colors"
+        )}
+        style={{
+          color: accentColor,
+          borderColor: accentColor,
+          backgroundColor: accentBackground,
+        }}
       >
         <Zap className="h-4 w-4" />
         Stopwatch

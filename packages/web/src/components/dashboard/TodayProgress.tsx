@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { Session, Task, Category } from "@ticktick/shared";
+import type { Category, Session, Task } from "@ticktick/shared";
 import { Check } from "lucide-react";
 import { DailyTimeline } from "./DailyTimeline.js";
 
@@ -48,13 +48,10 @@ export function TodayProgress({
   }
 
   // Create taskMap for DailyTimeline
-  const taskMap = progress.reduce(
-    (acc, { taskId, task }) => {
-      acc[taskId] = task;
-      return acc;
-    },
-    {} as Record<string, Task>
-  );
+  const taskMap = progress.reduce((acc, { taskId, task }) => {
+    acc[taskId] = task;
+    return acc;
+  }, {} as Record<string, Task>);
 
   return (
     <div className="rounded-xl bg-card/50 border border-border/50 p-6">
@@ -77,9 +74,9 @@ export function TodayProgress({
           // Determine color: Task Color -> Category Color -> Default (Primary)
           const taskColor = task.color;
           const categoryColor = task.category
-            ? categories.find(c => c.name === task.category)?.color
+            ? categories.find((c) => c.name === task.category)?.color
             : null;
-          const barColor = taskColor || categoryColor || 'hsl(var(--primary))';
+          const barColor = taskColor || categoryColor || "hsl(var(--primary))";
 
           return (
             <div
@@ -103,7 +100,9 @@ export function TodayProgress({
                   >
                     {task.title}
                   </span>
-                  {isComplete && <Check className="h-4 w-4 text-muted-foreground/50" />}
+                  {isComplete && (
+                    <Check className="h-4 w-4 text-muted-foreground/50" />
+                  )}
                 </div>
                 <span className="text-sm text-muted-foreground">
                   {formatDuration(loggedMinutes)}
@@ -126,7 +125,11 @@ export function TodayProgress({
         })}
       </div>
 
-      <DailyTimeline sessions={sessions} taskMap={taskMap} />
+      <DailyTimeline
+        sessions={sessions}
+        taskMap={taskMap}
+        categories={categories}
+      />
     </div>
   );
 }

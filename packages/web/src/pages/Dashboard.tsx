@@ -1,7 +1,13 @@
-import type { RunningTimerState, Session, Task, Category } from "@ticktick/shared";
+import type {
+  Category,
+  RunningTimerState,
+  Session,
+  Task,
+} from "@ticktick/shared";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ManualEntryForm } from "../components/ManualEntryForm.js";
 import { TodayProgress } from "../components/dashboard/TodayProgress.js";
+import { StopwatchHero } from "../components/timer/StopwatchHero.js";
 import { TimerHero } from "../components/timer/TimerHero.js";
 import {
   Card,
@@ -9,16 +15,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card.js";
-import { db } from "../db/db.js";
-import { computeDailyTotals, formatHhMm } from "../reports/localReports.js";
-import { ensureDeviceId } from "../sync/deviceId.js";
-import { StopwatchHero } from "../components/timer/StopwatchHero.js";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs.js";
+import { db } from "../db/db.js";
+import { computeDailyTotals, formatHhMm } from "../reports/localReports.js";
+import { ensureDeviceId } from "../sync/deviceId.js";
 import { TimerStore } from "../timer/timerStore.js";
 
 /** Returns today's date as YYYY-MM-DD in local timezone */
@@ -165,8 +170,8 @@ export function Dashboard() {
         phase === "work"
           ? (settings?.pomodoroWorkMinutes ?? 25) * 60
           : phase === "longBreak"
-            ? (settings?.pomodoroLongBreakMinutes ?? 15) * 60
-            : (settings?.pomodoroShortBreakMinutes ?? 5) * 60;
+          ? (settings?.pomodoroLongBreakMinutes ?? 15) * 60
+          : (settings?.pomodoroShortBreakMinutes ?? 5) * 60;
 
       const remaining = timerState.pomodoro!.remainingSeconds;
       const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
@@ -297,7 +302,11 @@ export function Dashboard() {
       // If in Manual tab but autoStart is requested, default to normal (stopwatch)
       // Otherwise if not auto-starting, Manual tab just selects (handled by early return above if options.autoStart was false)
       // But if options.autoStart is UNDEFINED, existing logic was:
-      if (activeTab === "manual" && !options?.autoStart && !options?.switchRunning) {
+      if (
+        activeTab === "manual" &&
+        !options?.autoStart &&
+        !options?.switchRunning
+      ) {
         return;
       }
 
@@ -312,9 +321,9 @@ export function Dashboard() {
     // some logic if the user switches tabs while running?
     // Actually, switching tabs strictly changes the VIEW. The underlying timer state
     // persists. If I am running a Pomodoro, and I switch to Stopwatch tab, what happens?
-    // Ideally, the UI should reflect the RUNNING state. 
+    // Ideally, the UI should reflect the RUNNING state.
     // If I have a running Pomodoro, and I go to Stopwatch tab, maybe I should see the running timer?
-    // OR, we disable tab switching while running? 
+    // OR, we disable tab switching while running?
     // For now, let's assume the user stops before switching or validly switches.
     // If we switch tabs, we don't necessarily change the timer KIND unless we start a new one.
   }, []);
@@ -324,8 +333,8 @@ export function Dashboard() {
     if (timerState?.isRunning) {
       const runningTab = timerState.kind === "pomodoro" ? "timer" : "stopwatch";
       if (activeTab !== runningTab && activeTab !== "manual") {
-        // Optionally force switch, or just let user be. 
-        // Let's NOT force switch for now to avoid jarring UX, 
+        // Optionally force switch, or just let user be.
+        // Let's NOT force switch for now to avoid jarring UX,
         // but we could show a banner "Timer is running incognito"
         setActiveTab(runningTab);
       }
@@ -347,7 +356,11 @@ export function Dashboard() {
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
         <div>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="stopwatch">Stopwatch</TabsTrigger>
               <TabsTrigger value="timer">Timer</TabsTrigger>
@@ -365,6 +378,7 @@ export function Dashboard() {
                     elapsedSeconds={elapsedSeconds}
                     selectedTaskId={timerState?.taskId ?? selectedTaskId}
                     tasks={tasks}
+                    categories={categories}
                     onSelectTask={handleSelectTask}
                     onStart={handleStart}
                     onPause={handlePause}
@@ -388,8 +402,11 @@ export function Dashboard() {
                     isPomodoroMode={true}
                     selectedTaskId={timerState?.taskId ?? selectedTaskId}
                     tasks={tasks}
+                    categories={categories}
                     pomodoroPhase={timerState?.pomodoro?.phase}
-                    pomodoroSession={(timerState?.pomodoro?.cycleCount ?? 0) + 1}
+                    pomodoroSession={
+                      (timerState?.pomodoro?.cycleCount ?? 0) + 1
+                    }
                     onSelectTask={handleSelectTask}
                     onStart={handleStart}
                     onPause={handlePause}
