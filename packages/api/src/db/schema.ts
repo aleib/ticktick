@@ -11,6 +11,7 @@ export const tasks = pgTable("tasks", {
   title: text("title").notNull(),
   description: text("description"),
   category: text("category"),
+  color: text("color"),
   recurrenceRule: jsonb("recurrence_rule"),
   targetDailyMinutes: integer("target_daily_minutes"),
   targetWeeklyMinutes: integer("target_weekly_minutes"),

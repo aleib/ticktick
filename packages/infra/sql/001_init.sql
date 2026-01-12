@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title TEXT NOT NULL,
   description TEXT,
   category TEXT,
+  color TEXT,
   recurrence_rule JSONB,
   target_daily_minutes INT,
   target_weekly_minutes INT,
