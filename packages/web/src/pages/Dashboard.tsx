@@ -291,23 +291,17 @@ export function Dashboard() {
 
       if (options?.autoStart === false) return;
 
+      // Never start timer when in Manual tab - only select the task
+      if (activeTab === "manual") {
+        return;
+      }
+
       if (timerState?.isRunning) {
         if (options?.switchRunning && timerState.taskId !== taskId) {
           await timerStore.stop();
         } else {
           return;
         }
-      }
-
-      // If in Manual tab but autoStart is requested, default to normal (stopwatch)
-      // Otherwise if not auto-starting, Manual tab just selects (handled by early return above if options.autoStart was false)
-      // But if options.autoStart is UNDEFINED, existing logic was:
-      if (
-        activeTab === "manual" &&
-        !options?.autoStart &&
-        !options?.switchRunning
-      ) {
-        return;
       }
 
       const kind = activeTab === "timer" ? "pomodoro" : "normal";
