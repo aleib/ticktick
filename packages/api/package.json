@@ -5,9 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "node --import tsx --watch --enable-source-maps src/index.ts",
+    "dev:worker": "wrangler dev src/worker.ts",
     "build": "../../node_modules/.bin/tsc -p tsconfig.json",
     "typecheck": "../../node_modules/.bin/tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test",
+    "deploy": "wrangler deploy src/worker.ts",
+    "d1:migrate:local": "wrangler d1 migrations apply ticktick --local",
+    "d1:migrate:prod": "wrangler d1 migrations apply ticktick --remote",
     "lint": "echo \"(lint placeholder)\"",
     "format": "echo \"(format placeholder)\""
   },
@@ -19,10 +23,12 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250102.0",
     "@types/node": "^22.10.7",
     "@types/pg": "^8.10.2",
     "drizzle-kit": "^0.31.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "wrangler": "^4.59.2"
   }
 }

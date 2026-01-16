@@ -11,12 +11,13 @@
 
 ### Run (local)
 
-- API: `pnpm -C packages/api dev` (default `PORT=8787`)
+- API (Workers + D1): `pnpm -C packages/api dev:worker`
 - Web: `pnpm -C packages/web dev` (default `5173`)
 
-### Run with Postgres (Docker)
+### D1 migrations (local/prod)
 
-- `docker compose -f packages/infra/docker-compose.yml up`
+- Local: `pnpm -C packages/api d1:migrate:local`
+- Prod: `pnpm -C packages/api d1:migrate:prod`
 
 ### Commands
 

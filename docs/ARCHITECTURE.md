@@ -6,7 +6,7 @@ TickTick is a single-user, offline-first app with clean package boundaries for f
 
 - `packages/shared`: canonical types + Zod schemas + pure utilities (time/week helpers)
 - `packages/web`: React SPA, IndexedDB source of truth, outbox sync, timer/idle logic
-- `packages/api`: Fastify API, Postgres in v1 via Drizzle, repository interfaces for portability
+- `packages/api`: Cloudflare Workers API, D1 (SQLite) via Drizzle, repository interfaces for portability
 - `packages/infra`: docker-compose + SQL init schema
 - `packages/mobile`: stub for v2
 
@@ -24,6 +24,12 @@ TickTick is a single-user, offline-first app with clean package boundaries for f
   - **push** pending mutations in order
   - **pull** canonical entities since a `serverTs` watermark
   - merge with **LWW** by `updatedAt` (v1)
+
+### Hosting (v1)
+
+- Web hosted on Cloudflare Pages.
+- API hosted on Cloudflare Workers with D1 for storage.
+- Cloudflare Access (Google OIDC) gates both Pages and API.
 
 ### Timer architecture
 

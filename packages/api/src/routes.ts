@@ -1,20 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
-import {
-  dailyReportQuerySchema,
-  sessionSchema,
-  settingsSchema,
-  syncPullBodySchema,
-  syncPushBodySchema,
-  taskSchema,
-  timerStartBodySchema,
-  timerStopBodySchema,
-  weeklyReportQuerySchema,
-} from "@ticktick/shared";
-
-import { nowIso } from "@ticktick/shared";
-
 import { createDbClient } from "./db/client.js";
+import { createApiHandlers } from "./handlers.js";
 import { createMemoryRepos } from "./repos/memoryRepos.js";
 import { createPostgresRepos } from "./repos/postgresRepos.js";
 
@@ -28,116 +15,72 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   const db = createDbClient();
   const { taskRepo, sessionRepo, settingsRepo } =
     db != null ? createPostgresRepos(db) : createMemoryRepos();
+  const handlers = createApiHandlers({ taskRepo, sessionRepo, settingsRepo });
 
-  app.get("/api/health", async () => ({ ok: true }));
+  app.get("/api/health", async () => handlers.health());
 
   // --- Tasks ---
   app.get("/api/tasks", async () => {
-    return { tasks: await taskRepo.listTasks() };
+    return handlers.listTasks();
   });
 
   app.put("/api/tasks/:id", async (req) => {
-    const task = taskSchema.parse((req as any).body);
-    return { task: await taskRepo.upsertTask(task) };
+    return handlers.upsertTask((req as any).body);
   });
 
   app.delete("/api/tasks/:id", async (req) => {
-    // Soft delete keeps offline sync resilient.
     const id = (req as any).params?.id as string | undefined;
-    const deletedAtIso = nowIso();
-    if (id != null) {
-      await taskRepo.softDeleteTask(id, deletedAtIso);
-    }
-    return { ok: true };
+    return handlers.deleteTask(id);
   });
 
   // --- Sessions ---
   app.get("/api/sessions", async (req) => {
-    const query = (req as any).query as
-      | { from?: string; to?: string }
-      | undefined;
-    return {
-      sessions: await sessionRepo.listSessions({
-        fromIso: query?.from,
-        toIso: query?.to,
-      }),
-    };
+    const query = (req as any).query as { from?: string; to?: string } | undefined;
+    return handlers.listSessions(query);
   });
 
   app.put("/api/sessions/:id", async (req) => {
-    const session = sessionSchema.parse((req as any).body);
-    return { session: await sessionRepo.upsertSession(session) };
+    return handlers.upsertSession((req as any).body);
   });
 
   app.delete("/api/sessions/:id", async (req) => {
     const id = (req as any).params?.id as string | undefined;
-    const deletedAtIso = nowIso();
-    if (id != null) {
-      await sessionRepo.softDeleteSession(id, deletedAtIso);
-    }
-    return { ok: true };
+    return handlers.deleteSession(id);
   });
 
   // --- Settings ---
   app.get("/api/settings", async () => {
-    return { settings: await settingsRepo.getSettings() };
+    return handlers.getSettings();
   });
 
   app.put("/api/settings", async (req) => {
-    const settings = settingsSchema.parse((req as any).body);
-    return { settings: await settingsRepo.upsertSettings(settings) };
+    return handlers.upsertSettings((req as any).body);
   });
 
   // --- Timer convenience ---
   app.post("/api/timer/start", async (req) => {
-    const body = timerStartBodySchema.parse((req as any).body);
-    // In v1, start is equivalent to upserting a timer-session with endAt=null.
-    // Idempotency should be enforced by sessionId at the client boundary.
-    return { ok: true, sessionId: body.sessionId };
+    return handlers.timerStart((req as any).body);
   });
 
   app.post("/api/timer/stop", async (req) => {
-    const body = timerStopBodySchema.parse((req as any).body);
-    return { ok: true, sessionId: body.sessionId };
+    return handlers.timerStop((req as any).body);
   });
 
   // --- Sync ---
   app.post("/api/sync/push", async (req) => {
-    const body = syncPushBodySchema.parse((req as any).body);
-    // TODO: apply mutations to DB; for MVP scaffolding we accept and echo.
-    return {
-      applied: body.mutations.map((m) => m.id),
-      rejected: [],
-      serverTs: nowIso(),
-    };
+    return handlers.syncPush((req as any).body);
   });
 
   app.post("/api/sync/pull", async (req) => {
-    syncPullBodySchema.parse((req as any).body);
-    return {
-      tasks: await taskRepo.listTasks(),
-      sessions: await sessionRepo.listSessions(),
-      settings: await settingsRepo.getSettings(),
-      serverTs: nowIso(),
-    };
+    return handlers.syncPull((req as any).body);
   });
 
   // --- Reports ---
   app.get("/api/reports/daily", async (req) => {
-    dailyReportQuerySchema.parse((req as any).query);
-    return {
-      date: (req as any).query?.date ?? null,
-      totalsByTask: [],
-      totalSeconds: 0,
-    };
+    return handlers.dailyReport((req as any).query);
   });
 
   app.get("/api/reports/weekly", async (req) => {
-    weeklyReportQuerySchema.parse((req as any).query);
-    return {
-      weekStart: (req as any).query?.weekStart ?? null,
-      totalsByDay: [],
-      totalsByTask: [],
-    };
+    return handlers.weeklyReport((req as any).query);
   });
 }

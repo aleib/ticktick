@@ -6,10 +6,16 @@
 - Client generates UUIDs for offline creation.
 - Prefer upserts and soft deletes to keep sync robust.
 - Validate inputs using Zod schemas from `packages/shared`.
+- Cloudflare Access (Google OIDC) protects both web and API in prod.
 
 ### OpenAPI
 
 See `packages/api/openapi.yaml`.
+
+### Hosting (v1)
+
+- API is deployed as a Cloudflare Worker backed by D1 (SQLite).
+- Recommended base URL: `https://api.<your-domain>/api/*` (or same-origin via Pages Functions).
 
 ### Core endpoints (scaffold)
 

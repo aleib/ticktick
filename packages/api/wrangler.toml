@@ -1,0 +1,13 @@
+name = "ticktick-api"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Optional: set to a specific origin if hosting API on a different domain.
+# CORS_ALLOW_ORIGIN = "https://ticktick.example.com"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ticktick"
+database_id = "60f91c48-4cf7-4448-8884-4f9b500b5f3d"
+migrations_dir = "migrations"
